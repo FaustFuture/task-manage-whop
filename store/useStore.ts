@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { User, Board, List, Card, Subtask, ViewMode } from '@/types';
+import { User, Board, List, Card, Subtask, ViewMode, Analytics } from '@/types';
 import { api } from '@/lib/api';
 
 interface StoreState {
@@ -13,6 +13,11 @@ interface StoreState {
   lists: List[];
   cards: Card[];
   subtasks: Subtask[];
+
+  // Admin Analytics
+  analytics: Analytics | null;
+  isLoadingAnalytics: boolean;
+  analyticsLastUpdated: Date | null;
 
   // Loading States
   isLoadingBoards: boolean;
@@ -56,6 +61,10 @@ interface StoreState {
   addUser: (name: string, email: string, role: 'admin' | 'member') => Promise<void>;
   loadUsers: () => Promise<void>;
 
+  // Admin Analytics
+  loadAnalytics: () => Promise<void>;
+  refreshAnalytics: () => Promise<void>;
+
   // Data loading
   loadBoards: () => Promise<void>;
   loadLists: (boardId?: string) => Promise<void>;
@@ -72,6 +81,9 @@ export const useStore = create<StoreState>()((set) => ({
   lists: [],
   cards: [],
   subtasks: [],
+  analytics: null,
+  isLoadingAnalytics: false,
+  analyticsLastUpdated: null,
   isLoadingBoards: false,
   isLoadingLists: false,
   isLoadingCards: false,
@@ -311,6 +323,52 @@ export const useStore = create<StoreState>()((set) => ({
       }
     } finally {
       set({ isLoadingSubtasks: false });
+    }
+  },
+
+  // Admin Analytics
+  loadAnalytics: async () => {
+    const state = useStore.getState();
+
+    // Use cached analytics if less than 5 minutes old
+    if (
+      state.analytics &&
+      state.analyticsLastUpdated &&
+      Date.now() - state.analyticsLastUpdated.getTime() < 5 * 60 * 1000
+    ) {
+      return;
+    }
+
+    set({ isLoadingAnalytics: true });
+    try {
+      const result = await api.admin.getAnalytics();
+      if (result.data) {
+        set({
+          analytics: result.data,
+          analyticsLastUpdated: new Date(),
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load analytics:', error);
+    } finally {
+      set({ isLoadingAnalytics: false });
+    }
+  },
+
+  refreshAnalytics: async () => {
+    set({ isLoadingAnalytics: true });
+    try {
+      const result = await api.admin.getAnalytics();
+      if (result.data) {
+        set({
+          analytics: result.data,
+          analyticsLastUpdated: new Date(),
+        });
+      }
+    } catch (error) {
+      console.error('Failed to refresh analytics:', error);
+    } finally {
+      set({ isLoadingAnalytics: false });
     }
   },
 }));

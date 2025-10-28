@@ -36,15 +36,43 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
-    // Transform data to match frontend structure
-    const transformedBoards = boards?.map((board: any) => ({
-      ...board,
-      members: board.board_members?.map((bm: any) => bm.user_id) || [],
-      board_members: undefined,
-      createdAt: new Date(board.created_at),
-    }));
+    // For each board, count the tasks
+    const boardsWithTaskCounts = await Promise.all(
+      (boards || []).map(async (board: any) => {
+        // First get all list IDs for this board
+        const { data: lists } = await supabase
+          .from('lists')
+          .select('id')
+          .eq('board_id', board.id);
 
-    return NextResponse.json({ data: transformedBoards }, { status: 200 });
+        const listIds = lists?.map((list: any) => list.id) || [];
+
+        // Count cards in those lists
+        let taskCount = 0;
+        if (listIds.length > 0) {
+          const { count, error: countError } = await supabase
+            .from('cards')
+            .select('id', { count: 'exact', head: true })
+            .in('list_id', listIds);
+
+          if (countError) {
+            console.error('Error counting tasks for board:', board.id, countError);
+          } else {
+            taskCount = count || 0;
+          }
+        }
+
+        return {
+          ...board,
+          members: board.board_members?.map((bm: any) => bm.user_id) || [],
+          board_members: undefined,
+          createdAt: new Date(board.created_at),
+          taskCount,
+        };
+      })
+    );
+
+    return NextResponse.json({ data: boardsWithTaskCounts }, { status: 200 });
   } catch (error) {
     console.error('Error fetching boards:', error);
     return NextResponse.json(
@@ -97,6 +125,7 @@ export async function POST(request: NextRequest) {
           ...board,
           members: membersList,
           createdAt: new Date(board.created_at),
+          taskCount: 0,
         }
       },
       { status: 201 }

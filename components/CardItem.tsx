@@ -2,23 +2,45 @@
 
 import { useStore } from '@/store/useStore';
 import { Card, TaskStatus } from '@/types';
-import { CheckSquare } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
+import { useState } from 'react';
 
-const statusConfig: Record<TaskStatus, { label: string; bgColor: string; textColor: string }> = {
-  not_started: { label: 'Not Started', bgColor: 'bg-zinc-700', textColor: 'text-zinc-400' },
-  in_progress: { label: 'In Progress', bgColor: 'bg-blue-500/20', textColor: 'text-blue-400' },
-  done: { label: 'Done', bgColor: 'bg-emerald-500/20', textColor: 'text-emerald-400' },
+const statusConfig: Record<TaskStatus, { label: string; dotColor: string; bgColor: string; textColor: string; hoverBorder: string; hoverText: string }> = {
+  not_started: {
+    label: 'Not Started',
+    dotColor: 'bg-zinc-500',
+    bgColor: 'bg-zinc-700/50',
+    textColor: 'text-zinc-400',
+    hoverBorder: 'hover:border-zinc-500',
+    hoverText: 'hover:text-zinc-400'
+  },
+  in_progress: {
+    label: 'In Progress',
+    dotColor: 'bg-blue-500',
+    bgColor: 'bg-blue-500/20',
+    textColor: 'text-blue-400',
+    hoverBorder: 'hover:border-blue-500',
+    hoverText: 'hover:text-blue-400'
+  },
+  done: {
+    label: 'Done',
+    dotColor: 'bg-emerald-500',
+    bgColor: 'bg-emerald-500/20',
+    textColor: 'text-emerald-400',
+    hoverBorder: 'hover:border-emerald-500',
+    hoverText: 'hover:text-emerald-400'
+  },
 };
+
+const allStatuses: TaskStatus[] = ['not_started', 'in_progress', 'done'];
 
 interface CardItemProps {
   card: Card;
 }
 
 export function CardItem({ card }: CardItemProps) {
-  const { subtasks, users, openCardModal } = useStore();
-  const cardSubtasks = subtasks.filter((s) => s.cardId === card.id);
-  const completedSubtasks = cardSubtasks.filter((s) => s.isCompleted).length;
+  const { openCardModal, updateCard } = useStore();
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
   const {
     attributes,
@@ -28,68 +50,66 @@ export function CardItem({ card }: CardItemProps) {
     id: card.id,
   });
 
+  const handleStatusChange = (newStatus: TaskStatus) => {
+    updateCard(card.id, { status: newStatus });
+    setShowStatusDropdown(false);
+  };
+
   return (
     <div
       ref={setNodeRef}
       {...attributes}
-      className="bg-zinc-900 p-3 rounded-lg border border-zinc-700 hover:border-emerald-500 group"
+      className={`relative bg-zinc-900 rounded-lg border border-zinc-700 ${statusConfig[card.status].hoverBorder} group hover:bg-zinc-800/50 transition-colors duration-200`}
     >
+      {/* Interactive Status Bar - Left Edge */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowStatusDropdown(!showStatusDropdown);
+        }}
+        className={`absolute left-0 top-0 bottom-0 w-1 ${statusConfig[card.status].dotColor} group-hover:w-5 transition-all duration-200 cursor-pointer z-10 rounded-l-lg`}
+        title={statusConfig[card.status].label}
+      />
+
+      {/* Dropdown Menu */}
+      {showStatusDropdown && (
+        <>
+          <div
+            className="fixed inset-0 z-20"
+            onClick={() => setShowStatusDropdown(false)}
+          />
+          <div className="absolute left-7 top-0 w-40 bg-zinc-800 rounded-lg border border-zinc-700 shadow-xl z-30 overflow-hidden">
+            {allStatuses.map((status, index) => (
+              <button
+                key={status}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleStatusChange(status);
+                }}
+                className={`w-full px-3 py-2.5 text-left text-sm flex items-center gap-3 transition-colors ${
+                  card.status === status
+                    ? `${statusConfig[status].bgColor} ${statusConfig[status].textColor} font-medium`
+                    : 'text-zinc-400 hover:bg-zinc-700 hover:text-white'
+                } ${index === 0 ? 'rounded-t-lg' : ''} ${index === allStatuses.length - 1 ? 'rounded-b-lg' : ''}`}
+              >
+                <div className={`w-3 h-3 rounded-sm ${statusConfig[status].dotColor}`} />
+                {statusConfig[status].label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Card Content */}
       <div
         {...listeners}
-        className="cursor-grab active:cursor-grabbing"
+        onClick={() => openCardModal(card.id)}
+        className="pl-3 group-hover:pl-7 pr-2 py-1.5 cursor-grab active:cursor-grabbing transition-all duration-200"
       >
-        <h4
-          onClick={() => openCardModal(card.id)}
-          className="text-white font-medium mb-2 select-none cursor-pointer hover:text-emerald-400 transition-colors"
+        <div
+          className={`text-sm leading-tight text-white select-none ${statusConfig[card.status].hoverText} break-words`}
         >
           {card.title}
-        </h4>
-
-        {card.description && (
-          <p className="text-sm text-zinc-400 mb-2 line-clamp-2 select-none">
-            {card.description}
-          </p>
-        )}
-
-        <div className="flex items-center gap-2 mb-2">
-          <span
-            className={`text-xs px-2 py-1 rounded ${statusConfig[card.status].bgColor} ${statusConfig[card.status].textColor} font-medium select-none`}
-          >
-            {statusConfig[card.status].label}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between">
-          {cardSubtasks.length > 0 && (
-            <div className="flex items-center gap-1.5 text-xs text-zinc-400 select-none">
-              <CheckSquare size={14} />
-              <span>
-                {completedSubtasks}/{cardSubtasks.length}
-              </span>
-            </div>
-          )}
-
-          {card.assignedTo.length > 0 && (
-            <div className="flex -space-x-2">
-              {card.assignedTo.slice(0, 3).map((userId) => {
-                const user = users.find((u) => u.id === userId);
-                return (
-                  <div
-                    key={userId}
-                    className="w-6 h-6 rounded-full bg-emerald-500 border-2 border-zinc-900 flex items-center justify-center text-xs text-white font-medium select-none"
-                    title={user?.name}
-                  >
-                    {user?.name.charAt(0).toUpperCase()}
-                  </div>
-                );
-              })}
-              {card.assignedTo.length > 3 && (
-                <div className="w-6 h-6 rounded-full bg-zinc-700 border-2 border-zinc-900 flex items-center justify-center text-xs text-zinc-400 select-none">
-                  +{card.assignedTo.length - 3}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>

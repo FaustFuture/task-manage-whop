@@ -33,7 +33,7 @@ export function BoardView() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 10,
+        distance: 8,
       },
     })
   );
@@ -72,47 +72,46 @@ export function BoardView() {
     const activeCard = cards.find((c) => c.id === activeId);
     if (!activeCard) return;
 
-    // Check if we're dropping over a list
+    // Check if dropping over a list container
     const overList = boardLists.find((l) => l.id === overId);
     if (overList) {
-      // Dropping into a list
-      const cardsInTargetList = cards
+      // Dropping at the end of a list
+      const cardsInList = cards
         .filter((c) => c.listId === overList.id)
         .sort((a, b) => a.order - b.order);
 
-      const newOrder = cardsInTargetList.length;
-      moveCard(activeCard.id, overList.id, newOrder);
+      moveCard(activeCard.id, overList.id, cardsInList.length);
       return;
     }
 
-    // Check if we're dropping over another card
+    // Check if dropping over a card
     const overCard = cards.find((c) => c.id === overId);
     if (overCard) {
-      // Move to the same list as the card we're over
+      const targetListId = overCard.listId;
       const cardsInTargetList = cards
-        .filter((c) => c.listId === overCard.listId)
+        .filter((c) => c.listId === targetListId)
         .sort((a, b) => a.order - b.order);
 
       const overIndex = cardsInTargetList.findIndex((c) => c.id === overId);
 
-      if (activeCard.listId === overCard.listId) {
+      if (activeCard.listId === targetListId) {
         // Same list - reorder
         const activeIndex = cardsInTargetList.findIndex((c) => c.id === activeId);
         const reordered = arrayMove(cardsInTargetList, activeIndex, overIndex);
 
-        // Update ALL cards with their new orders
         reordered.forEach((card, index) => {
-          moveCard(card.id, card.listId, index);
+          moveCard(card.id, targetListId, index);
         });
       } else {
-        // Different list - insert at the position where placeholder was shown
-        // Insert the active card at the overIndex position
-        const updatedTargetList = [...cardsInTargetList];
-        updatedTargetList.splice(overIndex, 0, activeCard);
+        // Different list - move to position
+        // First move the card
+        moveCard(activeCard.id, targetListId, overIndex);
 
-        // Update all cards in the target list with their new orders
-        updatedTargetList.forEach((card, index) => {
-          moveCard(card.id, overCard.listId, index);
+        // Then reorder the rest
+        const filteredList = cardsInTargetList.filter(c => c.id !== activeCard.id);
+        filteredList.forEach((card, index) => {
+          const newIndex = index >= overIndex ? index + 1 : index;
+          moveCard(card.id, targetListId, newIndex);
         });
       }
     }
@@ -128,7 +127,7 @@ export function BoardView() {
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex flex-col h-screen bg-zinc-900">
+      <div className="flex flex-col bg-zinc-900">
         <div className="flex items-center gap-4 px-8 py-4 border-b border-zinc-800">
           <button
             onClick={() => setSelectedBoard(null)}
@@ -139,8 +138,8 @@ export function BoardView() {
           <h1 className="text-xl font-bold text-white">{currentBoard.title}</h1>
         </div>
 
-        <div className="flex-1 overflow-x-auto p-8">
-          <div className="flex gap-4 h-full">
+        <div className="flex-1 overflow-x-auto p-8 scrollbar-emerald">
+          <div className="flex gap-4 items-start">
             {isLoadingLists || isLoadingCards ? (
               // Show skeleton loaders while loading
               <>
@@ -197,9 +196,9 @@ export function BoardView() {
             ) : (
               <button
                 onClick={() => setIsAddingList(true)}
-                className="flex-shrink-0 w-72 h-fit p-4 bg-zinc-800/50 hover:bg-zinc-800 rounded-lg border-2 border-dashed border-zinc-700 hover:border-emerald-500 transition-all flex items-center gap-2 text-zinc-400 hover:text-emerald-500 cursor-pointer"
+                className="flex-shrink-0 w-72 px-3 py-2 bg-zinc-800/50 hover:bg-zinc-800 rounded-lg border-2 border-dashed border-zinc-700 hover:border-emerald-500 transition-all flex items-center gap-2 text-zinc-400 hover:text-emerald-500 cursor-pointer text-sm"
               >
-                <Plus size={20} />
+                <Plus size={16} />
                 Add List
               </button>
             )}
@@ -209,11 +208,9 @@ export function BoardView() {
 
       <DragOverlay>
         {activeCard ? (
-          <div className="bg-zinc-900 p-3 rounded-lg border-2 border-emerald-500 shadow-2xl w-72 opacity-95">
-            <h4 className="text-white font-medium select-none">{activeCard.title}</h4>
-            {activeCard.description && (
-              <p className="text-sm text-zinc-400 mt-1 line-clamp-1 select-none">{activeCard.description}</p>
-            )}
+          <div className="bg-zinc-900 px-3 py-2 rounded-lg border-2 border-emerald-500 shadow-lg w-72 flex items-start gap-2 opacity-80">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0 mt-1.5" />
+            <span className="text-sm text-white select-none break-words flex-1 min-w-0">{activeCard.title}</span>
           </div>
         ) : null}
       </DragOverlay>

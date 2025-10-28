@@ -2,9 +2,8 @@
 
 import { useStore } from '@/store/useStore';
 import { TaskStatus } from '@/types';
-import { X, Trash2, Plus, Check, UserPlus } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
-import { SubtaskSkeleton } from './Skeletons';
+import { X, Trash2, Plus, Check } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 const statusConfig: Record<TaskStatus, { label: string; bgColor: string; textColor: string }> = {
   not_started: { label: 'Not Started', bgColor: 'bg-zinc-700', textColor: 'text-zinc-400' },
@@ -16,7 +15,6 @@ export function CardModal() {
   const {
     cards,
     subtasks,
-    users,
     selectedCardId,
     isCardModalOpen,
     closeCardModal,
@@ -25,17 +23,12 @@ export function CardModal() {
     addSubtask,
     toggleSubtask,
     deleteSubtask,
-    isLoadingSubtasks,
-    loadSubtasks,
   } = useStore();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);
-  const [showMemberPicker, setShowMemberPicker] = useState(false);
-
-  const memberPickerRef = useRef<HTMLDivElement>(null);
 
   const card = cards.find((c) => c.id === selectedCardId);
   const cardSubtasks = subtasks
@@ -46,25 +39,17 @@ export function CardModal() {
     if (card) {
       setTitle(card.title);
       setDescription(card.description || '');
-      // Load subtasks for this card
-      loadSubtasks(card.id);
     }
   }, [card]);
 
+  // Auto-adjust textarea height when title changes
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (memberPickerRef.current && !memberPickerRef.current.contains(event.target as Node)) {
-        setShowMemberPicker(false);
-      }
-    };
-
-    if (showMemberPicker) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
+    const textarea = document.getElementById('card-title-textarea') as HTMLTextAreaElement;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = textarea.scrollHeight + 'px';
     }
-  }, [showMemberPicker]);
+  }, [title, isCardModalOpen]);
 
   if (!isCardModalOpen || !card) return null;
 
@@ -87,37 +72,33 @@ export function CardModal() {
     }
   };
 
-  const handleAssignMember = (userId: string) => {
-    if (!card.assignedTo.includes(userId)) {
-      updateCard(card.id, { assignedTo: [...card.assignedTo, userId] });
-    }
-    setShowMemberPicker(false);
-  };
-
-  const handleUnassignMember = (userId: string) => {
-    updateCard(card.id, { assignedTo: card.assignedTo.filter((id) => id !== userId) });
-  };
-
   const completedCount = cardSubtasks.filter((s) => s.isCompleted).length;
   const totalCount = cardSubtasks.length;
   const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-zinc-900 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-zinc-800">
-        <div className="sticky top-0 bg-zinc-900 border-b border-zinc-800 p-6 flex items-start justify-between">
-          <div className="flex-1">
-            <input
-              type="text"
+      <div className="bg-zinc-900 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-zinc-800 scrollbar-emerald">
+        <div className="sticky top-0 bg-zinc-900 border-b border-zinc-800 p-6 flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <textarea
+              id="card-title-textarea"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               onBlur={handleSave}
-              className="text-2xl font-bold text-white bg-transparent border-none focus:outline-none w-full"
+              className="text-2xl font-bold text-white bg-transparent border-none focus:outline-none w-full resize-none break-words min-h-[2.5rem]"
+              rows={1}
+              style={{ overflow: 'hidden' }}
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = 'auto';
+                target.style.height = target.scrollHeight + 'px';
+              }}
             />
           </div>
           <button
             onClick={closeCardModal}
-            className="p-2 hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
+            className="p-2 hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer flex-shrink-0"
           >
             <X className="text-zinc-400" size={20} />
           </button>
@@ -162,74 +143,6 @@ export function CardModal() {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-zinc-400 mb-3 block">
-              Members
-            </label>
-            <div className="flex items-center gap-3 flex-wrap">
-              {card.assignedTo.map((userId) => {
-                const user = users.find((u) => u.id === userId);
-                if (!user) return null;
-                return (
-                  <div
-                    key={userId}
-                    className="flex items-center gap-2 bg-zinc-800 px-3 py-2 rounded-lg group"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-sm text-white font-medium">
-                      {user.name.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="text-white text-sm">{user.name}</span>
-                    <button
-                      onClick={() => handleUnassignMember(userId)}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-zinc-700 rounded transition-all cursor-pointer"
-                    >
-                      <X className="text-zinc-400 hover:text-red-400" size={14} />
-                    </button>
-                  </div>
-                );
-              })}
-
-              <div className="relative" ref={memberPickerRef}>
-                <button
-                  onClick={() => setShowMemberPicker(!showMemberPicker)}
-                  className="w-10 h-10 rounded-full border-2 border-dashed border-zinc-700 hover:border-emerald-500 flex items-center justify-center text-zinc-400 hover:text-emerald-500 transition-all cursor-pointer"
-                >
-                  <UserPlus size={18} />
-                </button>
-
-                {showMemberPicker && (
-                  <div className="absolute left-0 top-12 w-64 bg-zinc-800 rounded-lg border border-zinc-700 shadow-xl z-10 p-2">
-                    <div className="text-xs text-zinc-400 px-3 py-2 font-medium">
-                      Assign member
-                    </div>
-                    {users
-                      .filter((u) => !card.assignedTo.includes(u.id))
-                      .map((user) => (
-                        <button
-                          key={user.id}
-                          onClick={() => handleAssignMember(user.id)}
-                          className="w-full flex items-center gap-3 px-3 py-2 hover:bg-zinc-700 rounded-lg transition-colors cursor-pointer"
-                        >
-                          <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-sm text-white font-medium">
-                            {user.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="flex-1 text-left">
-                            <div className="text-white text-sm">{user.name}</div>
-                            <div className="text-zinc-400 text-xs">{user.email}</div>
-                          </div>
-                        </button>
-                      ))}
-                    {users.filter((u) => !card.assignedTo.includes(u.id)).length === 0 && (
-                      <div className="text-zinc-500 text-sm px-3 py-2">
-                        All members assigned
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div>
             <div className="flex items-center justify-between mb-3">
               <label className="text-sm font-medium text-zinc-400">
                 Subtasks
@@ -253,50 +166,41 @@ export function CardModal() {
             )}
 
             <div className="space-y-2 mb-3">
-              {isLoadingSubtasks ? (
-                // Show skeleton loaders while loading
-                <>
-                  <SubtaskSkeleton />
-                  <SubtaskSkeleton />
-                  <SubtaskSkeleton />
-                </>
-              ) : (
-                cardSubtasks.map((subtask) => (
-                  <div
-                    key={subtask.id}
-                    className="flex items-center gap-3 p-3 bg-zinc-800 rounded-lg group"
+              {cardSubtasks.map((subtask) => (
+                <div
+                  key={subtask.id}
+                  className="flex items-center gap-3 p-3 bg-zinc-800 rounded-lg group"
+                >
+                  <button
+                    onClick={() => toggleSubtask(subtask.id)}
+                    className={`
+                      flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all cursor-pointer
+                      ${subtask.isCompleted
+                        ? 'bg-emerald-500 border-emerald-500'
+                        : 'border-zinc-600 hover:border-emerald-500'
+                      }
+                    `}
                   >
-                    <button
-                      onClick={() => toggleSubtask(subtask.id)}
-                      className={`
-                        flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all cursor-pointer
-                        ${subtask.isCompleted
-                          ? 'bg-emerald-500 border-emerald-500'
-                          : 'border-zinc-600 hover:border-emerald-500'
-                        }
-                      `}
-                    >
-                      {subtask.isCompleted && (
-                        <Check className="text-white" size={14} />
-                      )}
-                    </button>
-                    <span
-                      className={`
-                        flex-1 text-white
-                        ${subtask.isCompleted ? 'line-through text-zinc-500' : ''}
-                      `}
-                    >
-                      {subtask.title}
-                    </span>
-                    <button
-                      onClick={() => deleteSubtask(subtask.id)}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-zinc-700 rounded transition-all cursor-pointer"
-                    >
-                      <Trash2 className="text-zinc-400 hover:text-red-400" size={14} />
-                    </button>
-                  </div>
-                ))
-              )}
+                    {subtask.isCompleted && (
+                      <Check className="text-white" size={14} />
+                    )}
+                  </button>
+                  <span
+                    className={`
+                      flex-1 text-white
+                      ${subtask.isCompleted ? 'line-through text-zinc-500' : ''}
+                    `}
+                  >
+                    {subtask.title}
+                  </span>
+                  <button
+                    onClick={() => deleteSubtask(subtask.id)}
+                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-zinc-700 rounded transition-all cursor-pointer"
+                  >
+                    <Trash2 className="text-zinc-400 hover:text-red-400" size={14} />
+                  </button>
+                </div>
+              ))}
             </div>
 
             {isAddingSubtask ? (

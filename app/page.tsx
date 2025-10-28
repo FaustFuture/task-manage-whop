@@ -16,10 +16,17 @@ export default function Home() {
     const loadData = async () => {
       // Load boards directly without requiring users
       await loadBoards();
+
+      // Load users, lists, and all cards if in admin mode
+      if (viewMode === 'admin') {
+        await loadUsers();
+        await loadLists(); // Load all lists without board filter
+        await loadCards(); // Load all cards without board filter
+      }
     };
 
     loadData();
-  }, []);
+  }, [viewMode]);
 
   // Load lists and cards when board is selected
   useEffect(() => {

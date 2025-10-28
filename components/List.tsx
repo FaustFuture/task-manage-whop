@@ -42,7 +42,7 @@ export function BoardList({ list, activeCardId, overCardId }: BoardListProps) {
   };
 
   return (
-    <div className="flex-shrink-0 w-72 bg-zinc-800 rounded-lg p-4 flex flex-col max-h-full">
+    <div className="flex-shrink-0 w-72 bg-zinc-800 rounded-lg p-4 flex flex-col">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-white">{list.title}</h3>
         <div className="relative">
@@ -69,11 +69,46 @@ export function BoardList({ list, activeCardId, overCardId }: BoardListProps) {
         </div>
       </div>
 
+      <div
+        ref={setNodeRef}
+        className="max-h-[calc(100vh-300px)] overflow-y-auto scrollbar-emerald mb-4"
+      >
+        <div className="space-y-2">
+          <SortableContext items={listCards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+            {listCards.map((card) => {
+              const isBeingDragged = card.id === activeCardId;
+              const showPlaceholder = activeCardId && overCardId === card.id && activeCardId !== card.id;
+
+              return (
+                <div key={card.id}>
+                  {showPlaceholder && (
+                    <div className="h-[40px] mb-2 bg-emerald-500/10 border-2 border-dashed border-emerald-500 rounded" />
+                  )}
+                  {!isBeingDragged && <CardItem card={card} />}
+                  {isBeingDragged && (
+                    <div className="h-[40px] bg-zinc-800/50 border-2 border-dashed border-zinc-600 rounded" />
+                  )}
+                </div>
+              );
+            })}
+          </SortableContext>
+
+          {listCards.length === 0 && isOver && activeCard && (
+            <div className="h-[40px] bg-emerald-500/10 border-2 border-dashed border-emerald-500 rounded" />
+          )}
+        </div>
+      </div>
+
       {isAddingCard ? (
-        <div className="mb-3">
+        <div>
           <textarea
             value={newCardTitle}
-            onChange={(e) => setNewCardTitle(e.target.value)}
+            onChange={(e) => {
+              setNewCardTitle(e.target.value);
+              // Auto-resize textarea
+              e.target.style.height = 'auto';
+              e.target.style.height = e.target.scrollHeight + 'px';
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -85,8 +120,8 @@ export function BoardList({ list, activeCardId, overCardId }: BoardListProps) {
               }
             }}
             placeholder="Enter card title..."
-            className="w-full bg-zinc-900 text-white px-3 py-2 rounded-lg border border-zinc-700 focus:border-emerald-500 focus:outline-none mb-2 resize-none"
-            rows={3}
+            className="w-full bg-zinc-900 text-white text-sm px-3 py-2 rounded-lg border border-zinc-700 focus:border-emerald-500 focus:outline-none mb-2 resize-none overflow-hidden"
+            rows={1}
             autoFocus
           />
           <div className="flex gap-2">
@@ -110,64 +145,12 @@ export function BoardList({ list, activeCardId, overCardId }: BoardListProps) {
       ) : (
         <button
           onClick={() => setIsAddingCard(true)}
-          className="w-full p-2 text-zinc-400 hover:bg-zinc-700 hover:text-white rounded-lg transition-all flex items-center gap-2 text-sm mb-3 cursor-pointer"
+          className="w-full p-2 mt-2 text-zinc-400 hover:bg-zinc-700 hover:text-white rounded-lg transition-all flex items-center gap-2 text-sm cursor-pointer"
         >
           <Plus size={16} />
           Add a card
         </button>
       )}
-
-      <div
-        ref={setNodeRef}
-        className={`flex-1 overflow-y-auto space-y-2 min-h-[100px] rounded-lg p-2 ${
-          isOver && activeCard && activeCard.listId !== list.id ? 'bg-emerald-500/10 ring-2 ring-emerald-500' : ''
-        }`}
-      >
-        <SortableContext items={listCards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-          {listCards.map((card, index) => {
-            const isBeingDragged = card.id === activeCardId;
-
-            // Find the original position of the dragged card
-            const draggedCard = activeCardId ? cards.find(c => c.id === activeCardId) : null;
-            const draggedCardIndex = draggedCard ? listCards.findIndex(c => c.id === draggedCard.id) : -1;
-            const currentCardIndex = index;
-
-            // Show placeholder if:
-            // 1. We're hovering over this card AND
-            // 2. It's not the dragged card itself AND
-            // 3. It's not the position right after the dragged card (which is effectively the same position)
-            const shouldShowPlaceholder =
-              activeCardId &&
-              overCardId === card.id &&
-              activeCardId !== card.id &&
-              !(draggedCard?.listId === list.id && currentCardIndex === draggedCardIndex);
-
-            return (
-              <div key={card.id}>
-                {shouldShowPlaceholder && (
-                  <div className="h-[100px] mb-2 bg-emerald-500/20 border-2 border-dashed border-emerald-500 rounded-lg flex items-center justify-center">
-                    <span className="text-emerald-400 text-sm font-medium">Drop here</span>
-                  </div>
-                )}
-                {!isBeingDragged && <CardItem card={card} />}
-                {isBeingDragged && (
-                  <div className="h-[100px] bg-zinc-800/50 border-2 border-dashed border-zinc-600 rounded-lg" />
-                )}
-              </div>
-            );
-          })}
-        </SortableContext>
-        {listCards.length === 0 && isOver && activeCard && activeCard.listId !== list.id && (
-          <div className="h-[100px] bg-emerald-500/20 border-2 border-dashed border-emerald-500 rounded-lg flex items-center justify-center">
-            <span className="text-emerald-400 text-sm font-medium">Drop here</span>
-          </div>
-        )}
-        {listCards.length === 0 && (!isOver || (activeCard && activeCard.listId === list.id)) && (
-          <div className="flex items-center justify-center h-32 text-zinc-600 text-sm border-2 border-dashed border-zinc-700 rounded-lg">
-            {activeCard && activeCard.listId === list.id ? 'Original position' : 'Drop cards here'}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
