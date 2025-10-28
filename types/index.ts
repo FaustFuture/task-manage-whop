@@ -1,6 +1,6 @@
-export type UserRole = 'admin' | 'member';
+export type UserRole = "admin" | "member";
 
-export type TaskStatus = 'not_started' | 'in_progress' | 'done';
+export type TaskStatus = "not_started" | "in_progress" | "done";
 
 export interface User {
   id: string;
@@ -45,4 +45,4 @@ export interface Subtask {
   order: number;
 }
 
-export type ViewMode = 'admin' | 'member';
+export type ViewMode = "admin" | "member";

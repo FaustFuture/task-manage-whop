@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { NextRequest, NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase";
 
 // GET /api/cards/[id] - Get a specific card with assignees
 export async function GET(
@@ -9,23 +9,22 @@ export async function GET(
   try {
     const { id } = await params;
     const { data: card, error } = await supabase
-      .from('cards')
-      .select(`
+      .from("cards")
+      .select(
+        `
         *,
         card_assignees (
           user_id
         )
-      `)
-      .eq('id', id)
+      `
+      )
+      .eq("id", id)
       .single();
 
     if (error) throw error;
 
     if (!card) {
-      return NextResponse.json(
-        { error: 'Card not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Card not found" }, { status: 404 });
     }
 
     // Transform data to camelCase
@@ -34,7 +33,7 @@ export async function GET(
       listId: card.list_id,
       title: card.title,
       description: card.description,
-      status: card.status || 'not_started',
+      status: card.status || "not_started",
       assignedTo: card.card_assignees?.map((ca: any) => ca.user_id) || [],
       createdBy: card.created_by,
       createdAt: new Date(card.created_at),
@@ -43,9 +42,9 @@ export async function GET(
 
     return NextResponse.json({ data: transformedCard }, { status: 200 });
   } catch (error) {
-    console.error('Error fetching card:', error);
+    console.error("Error fetching card:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch card' },
+      { error: "Failed to fetch card" },
       { status: 500 }
     );
   }
@@ -70,28 +69,22 @@ export async function PATCH(
 
     // Update card
     const { data: card, error: cardError } = await supabase
-      .from('cards')
+      .from("cards")
       .update(updates)
-      .eq('id', id)
+      .eq("id", id)
       .select()
       .single();
 
     if (cardError) throw cardError;
 
     if (!card) {
-      return NextResponse.json(
-        { error: 'Card not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Card not found" }, { status: 404 });
     }
 
     // Update assignees if provided
     if (assignedTo && Array.isArray(assignedTo)) {
       // Delete existing assignees
-      await supabase
-        .from('card_assignees')
-        .delete()
-        .eq('card_id', id);
+      await supabase.from("card_assignees").delete().eq("card_id", id);
 
       // Add new assignees
       if (assignedTo.length > 0) {
@@ -100,17 +93,15 @@ export async function PATCH(
           user_id: userId,
         }));
 
-        await supabase
-          .from('card_assignees')
-          .insert(cardAssignees);
+        await supabase.from("card_assignees").insert(cardAssignees);
       }
     }
 
     // Fetch updated assignees
     const { data: cardAssignees } = await supabase
-      .from('card_assignees')
-      .select('user_id')
-      .eq('card_id', id);
+      .from("card_assignees")
+      .select("user_id")
+      .eq("card_id", id);
 
     // Transform to camelCase for frontend
     const transformedCard = {
@@ -118,21 +109,18 @@ export async function PATCH(
       listId: card.list_id,
       title: card.title,
       description: card.description,
-      status: card.status || 'not_started',
-      assignedTo: cardAssignees?.map(ca => ca.user_id) || [],
+      status: card.status || "not_started",
+      assignedTo: cardAssignees?.map((ca) => ca.user_id) || [],
       createdBy: card.created_by,
       createdAt: new Date(card.created_at),
       order: card.order,
     };
 
-    return NextResponse.json(
-      { data: transformedCard },
-      { status: 200 }
-    );
+    return NextResponse.json({ data: transformedCard }, { status: 200 });
   } catch (error) {
-    console.error('Error updating card:', error);
+    console.error("Error updating card:", error);
     return NextResponse.json(
-      { error: 'Failed to update card' },
+      { error: "Failed to update card" },
       { status: 500 }
     );
   }
@@ -145,21 +133,18 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const { error } = await supabase
-      .from('cards')
-      .delete()
-      .eq('id', id);
+    const { error } = await supabase.from("cards").delete().eq("id", id);
 
     if (error) throw error;
 
     return NextResponse.json(
-      { message: 'Card deleted successfully' },
+      { message: "Card deleted successfully" },
       { status: 200 }
     );
   } catch (error) {
-    console.error('Error deleting card:', error);
+    console.error("Error deleting card:", error);
     return NextResponse.json(
-      { error: 'Failed to delete card' },
+      { error: "Failed to delete card" },
       { status: 500 }
     );
   }
