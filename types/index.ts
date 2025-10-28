@@ -1,5 +1,7 @@
 export type UserRole = 'admin' | 'member';
 
+export type TaskStatus = 'not_started' | 'in_progress' | 'done';
+
 export interface User {
   id: string;
   name: string;
@@ -28,6 +30,7 @@ export interface Card {
   listId: string;
   title: string;
   description?: string;
+  status: TaskStatus;
   assignedTo: string[];
   createdBy: string | null;
   createdAt: Date;

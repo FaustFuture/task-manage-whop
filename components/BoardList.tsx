@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { BoardSkeleton } from './Skeletons';
 
 export function BoardList() {
-  const { boards, addBoard, setSelectedBoard, currentUser, isLoadingBoards } = useStore();
+  const { boards, addBoard, setSelectedBoard, currentUser, isLoadingBoards, lists, cards } = useStore();
   const [isAdding, setIsAdding] = useState(false);
   const [newBoardTitle, setNewBoardTitle] = useState('');
 
@@ -16,6 +16,13 @@ export function BoardList() {
       setNewBoardTitle('');
       setIsAdding(false);
     }
+  };
+
+  // Helper function to count tasks in a board
+  const getTaskCount = (boardId: string) => {
+    const boardLists = lists.filter(list => list.boardId === boardId);
+    const listIds = boardLists.map(list => list.id);
+    return cards.filter(card => listIds.includes(card.listId)).length;
   };
 
   // Show all boards if no current user, otherwise filter by user's boards
@@ -47,31 +54,52 @@ export function BoardList() {
               <BoardSkeleton />
             </>
           ) : (
-            userBoards.map((board) => (
-              <button
-                key={board.id}
-                onClick={() => setSelectedBoard(board.id)}
-                className="group p-6 bg-zinc-800 rounded-lg border border-zinc-700 hover:border-emerald-500 transition-all text-left cursor-pointer"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-zinc-700 rounded-lg group-hover:bg-emerald-500/20 transition-colors">
-                    <Folder className="text-emerald-500" size={24} />
+            userBoards.map((board) => {
+              const taskCount = getTaskCount(board.id);
+              return (
+                <button
+                  key={board.id}
+                  onClick={() => setSelectedBoard(board.id)}
+                  className="group relative p-6 bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-xl border border-zinc-700 hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-500/10 transition-all text-left cursor-pointer overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl group-hover:bg-emerald-500/10 transition-all" />
+                  <div className="relative flex flex-col gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-3 bg-zinc-700/50 rounded-xl group-hover:bg-emerald-500/20 transition-all backdrop-blur-sm">
+                        <Folder className="text-emerald-500 group-hover:scale-110 transition-transform" size={24} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-white text-lg mb-1 truncate group-hover:text-emerald-400 transition-colors">
+                          {board.title}
+                        </h3>
+                        <p className="text-sm text-zinc-400">
+                          {board.members.length} member{board.members.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-3 border-t border-zinc-700/50">
+                      <div className="flex items-center gap-2">
+                        <div className="px-3 py-1.5 bg-zinc-700/50 rounded-lg backdrop-blur-sm">
+                          <span className="text-sm font-semibold text-emerald-400">
+                            {taskCount}
+                          </span>
+                          <span className="text-xs text-zinc-400 ml-1">
+                            task{taskCount !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-xs text-zinc-500 group-hover:text-emerald-500 transition-colors">
+                        Open →
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-white mb-1 truncate">
-                      {board.title}
-                    </h3>
-                    <p className="text-sm text-zinc-400">
-                      {board.members.length} member{board.members.length !== 1 ? 's' : ''}
-                    </p>
-                  </div>
-                </div>
-              </button>
-            ))
+                </button>
+              );
+            })
           )}
 
           {isAdding && (
-            <div className="p-6 bg-zinc-800 rounded-lg border border-emerald-500">
+            <div className="p-6 bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-xl border-2 border-emerald-500 shadow-lg shadow-emerald-500/20">
               <input
                 type="text"
                 value={newBoardTitle}
@@ -83,23 +111,23 @@ export function BoardList() {
                     setNewBoardTitle('');
                   }
                 }}
-                placeholder="Board title..."
-                className="w-full bg-zinc-900 text-white px-3 py-2 rounded-lg border border-zinc-700 focus:border-emerald-500 focus:outline-none mb-3"
+                placeholder="Enter board title..."
+                className="w-full bg-zinc-900 text-white px-4 py-3 rounded-lg border border-zinc-700 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 mb-3 font-medium"
                 autoFocus
               />
               <div className="flex gap-2">
                 <button
                   onClick={handleAddBoard}
-                  className="flex-1 px-3 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors text-sm font-medium cursor-pointer"
+                  className="flex-1 px-4 py-2.5 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-all text-sm font-semibold cursor-pointer shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30"
                 >
-                  Add Board
+                  Create Board
                 </button>
                 <button
                   onClick={() => {
                     setIsAdding(false);
                     setNewBoardTitle('');
                   }}
-                  className="px-3 py-2 bg-zinc-700 text-white rounded-lg hover:bg-zinc-600 transition-colors text-sm font-medium cursor-pointer"
+                  className="px-4 py-2.5 bg-zinc-700 text-white rounded-lg hover:bg-zinc-600 transition-colors text-sm font-semibold cursor-pointer"
                 >
                   Cancel
                 </button>

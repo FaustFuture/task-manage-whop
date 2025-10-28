@@ -1,9 +1,16 @@
 'use client';
 
 import { useStore } from '@/store/useStore';
+import { TaskStatus } from '@/types';
 import { X, Trash2, Plus, Check, UserPlus } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { SubtaskSkeleton } from './Skeletons';
+
+const statusConfig: Record<TaskStatus, { label: string; bgColor: string; textColor: string }> = {
+  not_started: { label: 'Not Started', bgColor: 'bg-zinc-700', textColor: 'text-zinc-400' },
+  in_progress: { label: 'In Progress', bgColor: 'bg-blue-500/20', textColor: 'text-blue-400' },
+  done: { label: 'Done', bgColor: 'bg-emerald-500/20', textColor: 'text-emerald-400' },
+};
 
 export function CardModal() {
   const {
@@ -129,6 +136,29 @@ export function CardModal() {
               className="w-full bg-zinc-800 text-white px-4 py-3 rounded-lg border border-zinc-700 focus:border-emerald-500 focus:outline-none resize-none"
               rows={4}
             />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-zinc-400 mb-3 block">
+              Status
+            </label>
+            <div className="flex gap-2">
+              {(Object.keys(statusConfig) as TaskStatus[]).map((status) => (
+                <button
+                  key={status}
+                  onClick={() => updateCard(card.id, { status })}
+                  className={`
+                    flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all cursor-pointer
+                    ${card.status === status
+                      ? `${statusConfig[status].bgColor} ${statusConfig[status].textColor} ring-2 ring-offset-2 ring-offset-zinc-900 ${status === 'done' ? 'ring-emerald-500' : status === 'in_progress' ? 'ring-blue-500' : 'ring-zinc-600'}`
+                      : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                    }
+                  `}
+                >
+                  {statusConfig[status].label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div>

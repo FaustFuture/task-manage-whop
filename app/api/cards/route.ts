@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
       listId: card.list_id,
       title: card.title,
       description: card.description,
+      status: card.status || 'not_started',
       assignedTo: card.card_assignees?.map((ca: any) => ca.user_id) || [],
       createdBy: card.created_by,
       createdAt: new Date(card.created_at),
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { listId, title, description, assignedTo, createdBy, order } = body;
+    const { listId, title, description, status, assignedTo, createdBy, order } = body;
 
     if (!listId || !title) {
       return NextResponse.json(
@@ -96,6 +97,7 @@ export async function POST(request: NextRequest) {
         list_id: listId,
         title,
         description,
+        status: status || 'not_started',
         created_by: createdBy || null,
         order: cardOrder,
       }])
@@ -124,6 +126,7 @@ export async function POST(request: NextRequest) {
       listId: card.list_id,
       title: card.title,
       description: card.description,
+      status: card.status || 'not_started',
       assignedTo: assignedTo || [],
       createdBy: card.created_by,
       createdAt: new Date(card.created_at),

@@ -1,9 +1,15 @@
 'use client';
 
 import { useStore } from '@/store/useStore';
-import { Card } from '@/types';
+import { Card, TaskStatus } from '@/types';
 import { CheckSquare } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
+
+const statusConfig: Record<TaskStatus, { label: string; bgColor: string; textColor: string }> = {
+  not_started: { label: 'Not Started', bgColor: 'bg-zinc-700', textColor: 'text-zinc-400' },
+  in_progress: { label: 'In Progress', bgColor: 'bg-blue-500/20', textColor: 'text-blue-400' },
+  done: { label: 'Done', bgColor: 'bg-emerald-500/20', textColor: 'text-emerald-400' },
+};
 
 interface CardItemProps {
   card: Card;
@@ -44,6 +50,14 @@ export function CardItem({ card }: CardItemProps) {
             {card.description}
           </p>
         )}
+
+        <div className="flex items-center gap-2 mb-2">
+          <span
+            className={`text-xs px-2 py-1 rounded ${statusConfig[card.status].bgColor} ${statusConfig[card.status].textColor} font-medium select-none`}
+          >
+            {statusConfig[card.status].label}
+          </span>
+        </div>
 
         <div className="flex items-center justify-between">
           {cardSubtasks.length > 0 && (

@@ -1,12 +1,24 @@
 'use client';
 
 import { useStore } from '@/store/useStore';
-import { Users, CheckSquare, Clock } from 'lucide-react';
+import { TaskStatus } from '@/types';
+import { Users, CheckSquare, Clock, PlayCircle, CheckCircle2 } from 'lucide-react';
+
+const statusConfig: Record<TaskStatus, { label: string; bgColor: string; textColor: string }> = {
+  not_started: { label: 'Not Started', bgColor: 'bg-zinc-700', textColor: 'text-zinc-400' },
+  in_progress: { label: 'In Progress', bgColor: 'bg-blue-500/20', textColor: 'text-blue-400' },
+  done: { label: 'Done', bgColor: 'bg-emerald-500/20', textColor: 'text-emerald-400' },
+};
 
 export function AdminDashboard() {
   const { users, cards, subtasks } = useStore();
 
   const members = users.filter((u) => u.role === 'member');
+
+  // Calculate overall status counts
+  const notStartedCount = cards.filter((c) => c.status === 'not_started').length;
+  const inProgressCount = cards.filter((c) => c.status === 'in_progress').length;
+  const doneCount = cards.filter((c) => c.status === 'done').length;
 
   const getMemberStats = (userId: string) => {
     const memberCards = cards.filter((c) => c.assignedTo.includes(userId));
@@ -17,9 +29,11 @@ export function AdminDashboard() {
 
     return {
       totalCards: memberCards.length,
+      notStarted: memberCards.filter((c) => c.status === 'not_started').length,
+      inProgress: memberCards.filter((c) => c.status === 'in_progress').length,
+      done: memberCards.filter((c) => c.status === 'done').length,
       totalSubtasks: memberSubtasks.length,
       completedSubtasks,
-      inProgress: memberCards.length - completedSubtasks,
     };
   };
 
@@ -31,7 +45,7 @@ export function AdminDashboard() {
           <p className="text-zinc-400">Manage team members and monitor their tasks</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-zinc-800 rounded-lg p-6 border border-zinc-700">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-zinc-400 text-sm font-medium">Total Members</h3>
@@ -42,19 +56,34 @@ export function AdminDashboard() {
 
           <div className="bg-zinc-800 rounded-lg p-6 border border-zinc-700">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-zinc-400 text-sm font-medium">Total Tasks</h3>
-              <CheckSquare className="text-blue-500" size={20} />
+              <h3 className="text-zinc-400 text-sm font-medium">Not Started</h3>
+              <Clock className="text-zinc-500" size={20} />
             </div>
-            <p className="text-3xl font-bold text-white">{cards.length}</p>
+            <p className="text-3xl font-bold text-white">{notStartedCount}</p>
+            <p className="text-xs text-zinc-500 mt-1">
+              {cards.length > 0 ? Math.round((notStartedCount / cards.length) * 100) : 0}% of total
+            </p>
           </div>
 
           <div className="bg-zinc-800 rounded-lg p-6 border border-zinc-700">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-zinc-400 text-sm font-medium">In Progress</h3>
-              <Clock className="text-yellow-500" size={20} />
+              <h3 className="text-blue-400 text-sm font-medium">In Progress</h3>
+              <PlayCircle className="text-blue-500" size={20} />
             </div>
-            <p className="text-3xl font-bold text-white">
-              {cards.filter((c) => c.assignedTo.length > 0).length}
+            <p className="text-3xl font-bold text-white">{inProgressCount}</p>
+            <p className="text-xs text-zinc-500 mt-1">
+              {cards.length > 0 ? Math.round((inProgressCount / cards.length) * 100) : 0}% of total
+            </p>
+          </div>
+
+          <div className="bg-zinc-800 rounded-lg p-6 border border-zinc-700">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-emerald-400 text-sm font-medium">Completed</h3>
+              <CheckCircle2 className="text-emerald-500" size={20} />
+            </div>
+            <p className="text-3xl font-bold text-white">{doneCount}</p>
+            <p className="text-xs text-zinc-500 mt-1">
+              {cards.length > 0 ? Math.round((doneCount / cards.length) * 100) : 0}% of total
             </p>
           </div>
         </div>
@@ -82,16 +111,18 @@ export function AdminDashboard() {
                           <p className="text-zinc-400 text-sm">{member.email}</p>
                         </div>
                       </div>
-                      <div className="flex gap-6">
-                        <div className="text-center">
-                          <p className="text-2xl font-bold text-white">{stats.totalCards}</p>
-                          <p className="text-xs text-zinc-400">Tasks</p>
+                      <div className="flex gap-4">
+                        <div className="text-center px-3 py-1.5 bg-zinc-900 rounded-lg">
+                          <p className="text-lg font-bold text-zinc-400">{stats.notStarted}</p>
+                          <p className="text-xs text-zinc-500">Not Started</p>
                         </div>
-                        <div className="text-center">
-                          <p className="text-2xl font-bold text-emerald-500">
-                            {stats.completedSubtasks}
-                          </p>
-                          <p className="text-xs text-zinc-400">Completed</p>
+                        <div className="text-center px-3 py-1.5 bg-blue-500/10 rounded-lg">
+                          <p className="text-lg font-bold text-blue-400">{stats.inProgress}</p>
+                          <p className="text-xs text-blue-500">In Progress</p>
+                        </div>
+                        <div className="text-center px-3 py-1.5 bg-emerald-500/10 rounded-lg">
+                          <p className="text-lg font-bold text-emerald-400">{stats.done}</p>
+                          <p className="text-xs text-emerald-500">Done</p>
                         </div>
                       </div>
                     </div>
@@ -111,19 +142,26 @@ export function AdminDashboard() {
                               key={card.id}
                               className="bg-zinc-900 p-3 rounded-lg border border-zinc-700"
                             >
+                              <div className="flex items-center justify-between mb-2">
+                                <h6 className="text-white font-medium flex-1">{card.title}</h6>
+                                <span
+                                  className={`text-xs px-2 py-1 rounded ${statusConfig[card.status].bgColor} ${statusConfig[card.status].textColor} font-medium ml-2 whitespace-nowrap`}
+                                >
+                                  {statusConfig[card.status].label}
+                                </span>
+                              </div>
                               <div className="flex items-center justify-between">
-                                <h6 className="text-white font-medium">{card.title}</h6>
+                                {card.description && (
+                                  <p className="text-sm text-zinc-500 line-clamp-1 flex-1">
+                                    {card.description}
+                                  </p>
+                                )}
                                 {total > 0 && (
-                                  <span className="text-xs text-zinc-400">
-                                    {completed}/{total}
+                                  <span className="text-xs text-zinc-400 ml-2">
+                                    {completed}/{total} subtasks
                                   </span>
                                 )}
                               </div>
-                              {card.description && (
-                                <p className="text-sm text-zinc-500 mt-1 line-clamp-1">
-                                  {card.description}
-                                </p>
-                              )}
                             </div>
                           );
                         })}

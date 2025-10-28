@@ -34,6 +34,7 @@ export async function GET(
       listId: card.list_id,
       title: card.title,
       description: card.description,
+      status: card.status || 'not_started',
       assignedTo: card.card_assignees?.map((ca: any) => ca.user_id) || [],
       createdBy: card.created_by,
       createdAt: new Date(card.created_at),
@@ -58,11 +59,12 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { title, description, listId, order, assignedTo } = body;
+    const { title, description, status, listId, order, assignedTo } = body;
 
     const updates: any = {};
     if (title !== undefined) updates.title = title;
     if (description !== undefined) updates.description = description;
+    if (status !== undefined) updates.status = status;
     if (listId !== undefined) updates.list_id = listId;
     if (order !== undefined) updates.order = order;
 
@@ -116,6 +118,7 @@ export async function PATCH(
       listId: card.list_id,
       title: card.title,
       description: card.description,
+      status: card.status || 'not_started',
       assignedTo: cardAssignees?.map(ca => ca.user_id) || [],
       createdBy: card.created_by,
       createdAt: new Date(card.created_at),
