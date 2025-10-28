@@ -19,12 +19,17 @@ export async function GET(request: NextRequest) {
 
     // Optionally filter by user
     if (userId) {
-      query = query.in('id',
-        supabase
-          .from('board_members')
-          .select('board_id')
-          .eq('user_id', userId)
-      );
+      // First, get the board IDs for the user
+      const { data: memberBoards } = await supabase
+        .from('board_members')
+        .select('board_id')
+        .eq('user_id', userId);
+
+      const boardIds = memberBoards?.map(bm => bm.board_id) || [];
+
+      if (boardIds.length > 0) {
+        query = query.in('id', boardIds);
+      }
     }
 
     const { data: boards, error } = await query;
