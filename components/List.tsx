@@ -53,18 +53,29 @@ export function BoardList({ list, activeCardId, overCardId }: BoardListProps) {
             <MoreVertical className="text-zinc-400" size={16} />
           </button>
           {showMenu && (
-            <div className="absolute right-0 mt-2 w-48 bg-zinc-900 rounded-lg border border-zinc-700 shadow-xl z-10">
-              <button
-                onClick={() => {
-                  deleteList(list.id);
+            <>
+              {/* Backdrop to close menu */}
+              <div
+                className="fixed inset-0 z-[9]"
+                onClick={(e) => {
+                  e.stopPropagation();
                   setShowMenu(false);
                 }}
-                className="w-full px-4 py-2 text-left text-red-400 hover:bg-zinc-800 rounded-lg flex items-center gap-2 cursor-pointer"
-              >
-                <Trash2 size={16} />
-                Delete List
-              </button>
-            </div>
+              />
+              {/* Menu */}
+              <div className="absolute right-0 mt-2 w-48 bg-zinc-900 rounded-lg border border-zinc-700 shadow-xl z-10">
+                <button
+                  onClick={() => {
+                    deleteList(list.id);
+                    setShowMenu(false);
+                  }}
+                  className="w-full px-4 py-2 text-left text-red-400 hover:bg-zinc-800 rounded-lg flex items-center gap-2 cursor-pointer"
+                >
+                  <Trash2 size={16} />
+                  Delete List
+                </button>
+              </div>
+            </>
           )}
         </div>
       </div>
