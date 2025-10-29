@@ -41,7 +41,7 @@ interface StoreState {
   setSelectedBoard: (id: string | null) => void;
 
   // List actions
-  reorderLists: (reorderedLists: List[]) => Promise<void>;
+  reorderLists: (listsToUpdate: List[], allLists: List[]) => Promise<void>;
   addList: (boardId: string, title: string) => Promise<void>;
   deleteList: (id: string) => Promise<void>;
   updateListOrder: (listId: string, newOrder: number) => Promise<void>;
@@ -152,21 +152,26 @@ export const useStore = create<StoreState>()((set) => ({
   setSelectedBoard: (id) => set({ selectedBoardId: id }),
 
   // List actions
-  reorderLists: async (reorderedLists: List[]) => {
-    try {
-      // Optimistic update - update all lists at once
-      set({ lists: reorderedLists });
+  reorderLists: async (listsToUpdate: List[], allLists: List[]) => {
+    const previousLists = useStore.getState().lists;
 
-      // Persist to database - update only changed orders
-      const updatePromises = reorderedLists.map((list, index) =>
-        api.lists.update(list.id, { order: index })
+    try {
+      // Optimistic update - update state with all lists
+      set({ lists: allLists });
+
+      // Persist to database - only update the lists that were reordered
+      const updatePromises = listsToUpdate.map((list) =>
+        api.lists.update(list.id, { order: list.order })
       );
+
       await Promise.all(updatePromises);
 
       toast.success("List reordered successfully");
     } catch (error) {
       console.error("Failed to reorder lists:", error);
       toast.error("Failed to reorder lists");
+      // Revert on error
+      set({ lists: previousLists });
     }
   },
 
@@ -255,8 +260,9 @@ export const useStore = create<StoreState>()((set) => ({
         cards: state.cards.map((c) => (c.id === id ? { ...c, ...updates } : c)),
       }));
 
-      // Show toast for status updates
+      // Show toast for different update types
       if (updates.status) {
+        // Status changed
         const statusLabels = {
           not_started: "Not Started",
           in_progress: "In Progress",
@@ -267,10 +273,12 @@ export const useStore = create<StoreState>()((set) => ({
             statusLabels[updates.status]
           }`
         );
-      } else if (updates.title) {
+      } else if (updates.title && updates.title !== card?.title) {
+        // Title changed
         toast.success(`Card renamed to "${updates.title}"`);
-      } else if (updates.description !== undefined) {
-        toast.success(`"${card?.title || "Card"}" updated successfully`);
+      } else if (updates.description !== undefined && updates.description !== card?.description) {
+        // Description changed
+        toast.success(`Description updated successfully`);
       }
     } catch (error) {
       console.error("Failed to update card:", error);

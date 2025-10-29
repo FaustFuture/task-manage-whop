@@ -29,6 +29,7 @@ export function CardModal() {
   const [description, setDescription] = useState('');
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const card = cards.find((c) => c.id === selectedCardId);
   const cardSubtasks = subtasks
@@ -39,6 +40,7 @@ export function CardModal() {
     if (card) {
       setTitle(card.title);
       setDescription(card.description || '');
+      setHasUnsavedChanges(false);
     }
   }, [card]);
 
@@ -54,7 +56,26 @@ export function CardModal() {
   if (!isCardModalOpen || !card) return null;
 
   const handleSave = () => {
-    updateCard(card.id, { title, description });
+    if (hasUnsavedChanges) {
+      updateCard(card.id, { title, description });
+      setHasUnsavedChanges(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setTitle(card.title);
+    setDescription(card.description || '');
+    setHasUnsavedChanges(false);
+  };
+
+  const handleTitleChange = (newTitle: string) => {
+    setTitle(newTitle);
+    setHasUnsavedChanges(newTitle !== card.title || description !== (card.description || ''));
+  };
+
+  const handleDescriptionChange = (newDesc: string) => {
+    setDescription(newDesc);
+    setHasUnsavedChanges(title !== card.title || newDesc !== (card.description || ''));
   };
 
   const handleAddSubtask = () => {
@@ -84,8 +105,9 @@ export function CardModal() {
             <textarea
               id="card-title-textarea"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onBlur={handleSave}
+              onChange={(e) => {
+                handleTitleChange(e.target.value);
+              }}
               className="text-2xl font-bold text-white bg-transparent border-none focus:outline-none w-full resize-none break-words min-h-[2.5rem]"
               rows={1}
               style={{ overflow: 'hidden' }}
@@ -111,12 +133,27 @@ export function CardModal() {
             </label>
             <textarea
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              onBlur={handleSave}
+              onChange={(e) => handleDescriptionChange(e.target.value)}
               placeholder="Add a more detailed description..."
               className="w-full bg-zinc-800 text-white px-4 py-3 rounded-lg border border-zinc-700 focus:border-emerald-500 focus:outline-none resize-none"
               rows={4}
             />
+            {hasUnsavedChanges && (
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={handleSave}
+                  className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors text-sm font-medium cursor-pointer"
+                >
+                  Save Changes
+                </button>
+                <button
+                  onClick={handleCancel}
+                  className="px-4 py-2 bg-zinc-700 text-white rounded-lg hover:bg-zinc-600 transition-colors text-sm font-medium cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
 
           <div>

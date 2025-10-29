@@ -12,11 +12,27 @@ export function BoardView() {
   const [isAddingList, setIsAddingList] = useState(false);
   const [newListTitle, setNewListTitle] = useState('');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [showLeftFade, setShowLeftFade] = useState(false);
+  const [showRightFade, setShowRightFade] = useState(false);
 
   const currentBoard = boards.find((b) => b.id === selectedBoardId);
   const boardLists = lists
     .filter((l) => l.boardId === selectedBoardId)
     .sort((a, b) => a.order - b.order);
+
+  // Check scroll position to show/hide fade indicators
+  const checkScrollPosition = () => {
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer) return;
+
+    const { scrollLeft, scrollWidth, clientWidth } = scrollContainer;
+
+    // Show left fade if scrolled from start
+    setShowLeftFade(scrollLeft > 0);
+
+    // Show right fade if not scrolled to end
+    setShowRightFade(scrollLeft < scrollWidth - clientWidth - 10);
+  };
 
   // Convert vertical scroll to horizontal scroll
   useEffect(() => {
@@ -31,9 +47,26 @@ export function BoardView() {
       }
     };
 
+    const handleScroll = () => {
+      checkScrollPosition();
+    };
+
     scrollContainer.addEventListener('wheel', handleWheel, { passive: false });
-    return () => scrollContainer.removeEventListener('wheel', handleWheel);
+    scrollContainer.addEventListener('scroll', handleScroll);
+
+    // Initial check
+    checkScrollPosition();
+
+    return () => {
+      scrollContainer.removeEventListener('wheel', handleWheel);
+      scrollContainer.removeEventListener('scroll', handleScroll);
+    };
   }, []);
+
+  // Recheck on lists change
+  useEffect(() => {
+    checkScrollPosition();
+  }, [boardLists.length]);
 
   if (!currentBoard) return null;
 
@@ -62,19 +95,20 @@ export function BoardView() {
       const [movedList] = reorderedLists.splice(source.index, 1);
       reorderedLists.splice(destination.index, 0, movedList);
 
-      // Update order property for each list
-      const updatedLists = reorderedLists.map((list, index) => ({
+      // Update order property for each list in current board
+      const updatedBoardLists = reorderedLists.map((list, index) => ({
         ...list,
         order: index,
       }));
 
-      // Update all lists from the entire board with new ordering
+      // Merge with other lists (from other boards)
       const allLists = lists.map(list => {
-        const updatedList = updatedLists.find(l => l.id === list.id);
+        const updatedList = updatedBoardLists.find(l => l.id === list.id);
         return updatedList || list;
       });
 
-      reorderLists(allLists);
+      // Save to database - pass only the updated board lists
+      reorderLists(updatedBoardLists, allLists);
       return;
     }
 
@@ -113,11 +147,22 @@ export function BoardView() {
           <h1 className="text-xl font-bold text-white">{currentBoard.title}</h1>
         </div>
 
-        <div
-          ref={scrollContainerRef}
-          className="flex-1 overflow-x-auto overflow-y-hidden p-8"
-        >
-          <div className="flex gap-4 h-full board-drag-area">
+        <div className="flex-1 relative">
+          {/* Left fade indicator */}
+          {showLeftFade && (
+            <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-zinc-900 to-transparent z-10 pointer-events-none" />
+          )}
+
+          {/* Right fade indicator */}
+          {showRightFade && (
+            <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-zinc-900 to-transparent z-10 pointer-events-none" />
+          )}
+
+          <div
+            ref={scrollContainerRef}
+            className="h-full overflow-x-auto overflow-y-hidden p-8 scrollbar-hide"
+          >
+            <div className="flex gap-4 h-full board-drag-area">
             {isLoadingLists || isLoadingCards ? (
               // Show skeleton loaders while loading
               <>
@@ -191,6 +236,7 @@ export function BoardView() {
               </button>
             )}
           </div>
+        </div>
         </div>
       </div>
     </DragDropContext>
