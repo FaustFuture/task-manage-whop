@@ -1,16 +1,17 @@
 'use client';
 
 import { useStore } from '@/store/useStore';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { BoardList as ListComponent } from './List';
 import { useState, useRef, useEffect } from 'react';
 import { DragDropContext, Droppable, DropResult } from '@hello-pangea/dnd';
 import { ListSkeleton } from './Skeletons';
 
 export function BoardView() {
-  const { boards, lists, cards, selectedBoardId, setSelectedBoard, addList, moveCard, reorderLists, isLoadingLists, isLoadingCards } = useStore();
+  const { boards, lists, cards, selectedBoardId, setSelectedBoard, addList, moveCard, reorderLists, deleteBoard, isLoadingLists, isLoadingCards } = useStore();
   const [isAddingList, setIsAddingList] = useState(false);
   const [newListTitle, setNewListTitle] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showLeftFade, setShowLeftFade] = useState(false);
   const [showRightFade, setShowRightFade] = useState(false);
@@ -75,6 +76,14 @@ export function BoardView() {
       addList(selectedBoardId, newListTitle);
       setNewListTitle('');
       setIsAddingList(false);
+    }
+  };
+
+  const handleDeleteBoard = async () => {
+    if (selectedBoardId) {
+      await deleteBoard(selectedBoardId);
+      setSelectedBoard(null);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -144,7 +153,14 @@ export function BoardView() {
           >
             <ArrowLeft className="text-zinc-400" size={20} />
           </button>
-          <h1 className="text-xl font-bold text-white">{currentBoard.title}</h1>
+          <h1 className="text-xl font-bold text-white flex-1">{currentBoard.title}</h1>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="p-2 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer group"
+            title="Delete board"
+          >
+            <Trash2 className="text-zinc-400 group-hover:text-red-500" size={20} />
+          </button>
         </div>
 
         <div className="flex-1 relative">
@@ -239,6 +255,39 @@ export function BoardView() {
         </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-800 rounded-xl p-6 max-w-md w-full border border-zinc-700 shadow-2xl">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="p-3 bg-red-500/10 rounded-lg">
+                <Trash2 className="text-red-500" size={24} />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-white mb-2">Delete Board?</h3>
+                <p className="text-zinc-400 text-sm">
+                  Are you sure you want to delete <span className="font-semibold text-white">{currentBoard.title}</span>? This will permanently delete all lists, cards, and subtasks in this board. This action cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleDeleteBoard}
+                className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-semibold cursor-pointer"
+              >
+                Delete Board
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 px-4 py-2.5 bg-zinc-700 text-white rounded-lg hover:bg-zinc-600 transition-colors font-semibold cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DragDropContext>
   );
 }

@@ -138,9 +138,21 @@ export const useStore = create<StoreState>()((set) => ({
     try {
       const board = useStore.getState().boards.find((b) => b.id === id);
       await api.boards.delete(id);
+
+      // Get list IDs to also remove associated cards and subtasks
+      const listIds = useStore.getState().lists
+        .filter((l) => l.boardId === id)
+        .map((l) => l.id);
+
+      const cardIds = useStore.getState().cards
+        .filter((c) => listIds.includes(c.listId))
+        .map((c) => c.id);
+
       set((state) => ({
         boards: state.boards.filter((b) => b.id !== id),
         lists: state.lists.filter((l) => l.boardId !== id),
+        cards: state.cards.filter((c) => !listIds.includes(c.listId)),
+        subtasks: state.subtasks.filter((s) => !cardIds.includes(s.cardId)),
       }));
       toast.success(`Board "${board?.title || ""}" deleted successfully`);
     } catch (error) {

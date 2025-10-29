@@ -1,14 +1,15 @@
 'use client';
 
 import { useStore } from '@/store/useStore';
-import { Plus, Folder } from 'lucide-react';
+import { Plus, Folder, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { BoardSkeleton } from './Skeletons';
 
 export function BoardList() {
-  const { boards, addBoard, setSelectedBoard, currentUser, isLoadingBoards } = useStore();
+  const { boards, addBoard, setSelectedBoard, deleteBoard, currentUser, isLoadingBoards } = useStore();
   const [isAdding, setIsAdding] = useState(false);
   const [newBoardTitle, setNewBoardTitle] = useState('');
+  const [deletingBoardId, setDeletingBoardId] = useState<string | null>(null);
 
   const handleAddBoard = () => {
     if (newBoardTitle.trim()) {
@@ -16,6 +17,11 @@ export function BoardList() {
       setNewBoardTitle('');
       setIsAdding(false);
     }
+  };
+
+  const handleDeleteBoard = async (boardId: string) => {
+    await deleteBoard(boardId);
+    setDeletingBoardId(null);
   };
 
   // Show all boards if no current user, otherwise filter by user's boards
@@ -48,10 +54,9 @@ export function BoardList() {
             </>
           ) : (
             userBoards.map((board) => (
-              <button
+              <div
                 key={board.id}
-                onClick={() => setSelectedBoard(board.id)}
-                className="group relative p-6 bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-xl border border-zinc-700 hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-500/10 transition-all text-left cursor-pointer overflow-hidden h-full w-full"
+                className="group relative p-6 bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-xl border border-zinc-700 hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-500/10 transition-all overflow-hidden h-full w-full"
               >
                 <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl group-hover:bg-emerald-500/10 transition-all" />
                 <div className="relative flex flex-col gap-4">
@@ -59,13 +64,29 @@ export function BoardList() {
                     <div className="p-3 bg-zinc-700/50 rounded-xl group-hover:bg-emerald-500/20 transition-all backdrop-blur-sm">
                       <Folder className="text-emerald-500 group-hover:scale-110 transition-transform" size={24} />
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div
+                      onClick={() => setSelectedBoard(board.id)}
+                      className="flex-1 min-w-0 cursor-pointer"
+                    >
                       <h3 className="font-bold text-white text-lg truncate group-hover:text-emerald-400 transition-colors">
                         {board.title}
                       </h3>
                     </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeletingBoardId(board.id);
+                      }}
+                      className="p-2 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                      title="Delete board"
+                    >
+                      <Trash2 className="text-zinc-400 hover:text-red-500" size={18} />
+                    </button>
                   </div>
-                  <div className="flex items-center justify-between pt-3 border-t border-zinc-700/50">
+                  <div
+                    onClick={() => setSelectedBoard(board.id)}
+                    className="flex items-center justify-between pt-3 border-t border-zinc-700/50 cursor-pointer"
+                  >
                     <div className="flex items-center gap-2">
                       <div className="px-3 py-1.5 bg-zinc-700/50 rounded-lg backdrop-blur-sm">
                         <span className="text-sm font-semibold text-emerald-400">
@@ -81,7 +102,7 @@ export function BoardList() {
                     </div>
                   </div>
                 </div>
-              </button>
+              </div>
             ))
           )}
 
@@ -122,6 +143,39 @@ export function BoardList() {
             </div>
           )}
         </div>
+
+        {/* Delete Confirmation Modal */}
+        {deletingBoardId && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-zinc-800 rounded-xl p-6 max-w-md w-full border border-zinc-700 shadow-2xl">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="p-3 bg-red-500/10 rounded-lg">
+                  <Trash2 className="text-red-500" size={24} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-white mb-2">Delete Board?</h3>
+                  <p className="text-zinc-400 text-sm">
+                    Are you sure you want to delete <span className="font-semibold text-white">{boards.find(b => b.id === deletingBoardId)?.title}</span>? This will permanently delete all lists, cards, and subtasks in this board. This action cannot be undone.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => handleDeleteBoard(deletingBoardId)}
+                  className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-semibold cursor-pointer"
+                >
+                  Delete Board
+                </button>
+                <button
+                  onClick={() => setDeletingBoardId(null)}
+                  className="flex-1 px-4 py-2.5 bg-zinc-700 text-white rounded-lg hover:bg-zinc-600 transition-colors font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
