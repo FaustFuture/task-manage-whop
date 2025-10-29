@@ -41,6 +41,7 @@ interface StoreState {
   setSelectedBoard: (id: string | null) => void;
 
   // List actions
+  reorderLists: (reorderedLists: List[]) => Promise<void>;
   addList: (boardId: string, title: string) => Promise<void>;
   deleteList: (id: string) => Promise<void>;
   updateListOrder: (listId: string, newOrder: number) => Promise<void>;
@@ -151,6 +152,24 @@ export const useStore = create<StoreState>()((set) => ({
   setSelectedBoard: (id) => set({ selectedBoardId: id }),
 
   // List actions
+  reorderLists: async (reorderedLists: List[]) => {
+    try {
+      // Optimistic update - update all lists at once
+      set({ lists: reorderedLists });
+
+      // Persist to database - update only changed orders
+      const updatePromises = reorderedLists.map((list, index) =>
+        api.lists.update(list.id, { order: index })
+      );
+      await Promise.all(updatePromises);
+
+      toast.success("List reordered successfully");
+    } catch (error) {
+      console.error("Failed to reorder lists:", error);
+      toast.error("Failed to reorder lists");
+    }
+  },
+
   addList: async (boardId, title) => {
     try {
       const result = await api.lists.create({ boardId, title });
@@ -187,12 +206,15 @@ export const useStore = create<StoreState>()((set) => ({
 
   updateListOrder: async (listId, newOrder) => {
     try {
-      await api.lists.update(listId, { order: newOrder });
+      // Optimistic update
       set((state) => ({
         lists: state.lists.map((l) =>
           l.id === listId ? { ...l, order: newOrder } : l
         ),
       }));
+
+      // Persist to database
+      await api.lists.update(listId, { order: newOrder });
     } catch (error) {
       console.error("Failed to update list order:", error);
       toast.error("Failed to update list order");

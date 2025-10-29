@@ -5,33 +5,22 @@ import { Plus, MoreVertical, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { List as ListType } from '@/types';
 import { CardItem } from './CardItem';
-import { useDroppable } from '@dnd-kit/core';
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
+import { Draggable, Droppable } from '@hello-pangea/dnd';
 
 interface BoardListProps {
   list: ListType;
-  activeCardId: string | null;
-  overCardId: string | null;
+  index: number;
 }
 
-export function BoardList({ list, activeCardId, overCardId }: BoardListProps) {
+export function BoardList({ list, index }: BoardListProps) {
   const { cards, addCard, deleteList } = useStore();
   const [isAddingCard, setIsAddingCard] = useState(false);
   const [newCardTitle, setNewCardTitle] = useState('');
   const [showMenu, setShowMenu] = useState(false);
 
-  const { setNodeRef, isOver } = useDroppable({
-    id: list.id,
-  });
-
   const listCards = cards
     .filter((c) => c.listId === list.id)
     .sort((a, b) => a.order - b.order);
-
-  const activeCard = activeCardId ? cards.find((c) => c.id === activeCardId) : null;
 
   const handleAddCard = () => {
     if (newCardTitle.trim()) {
@@ -42,73 +31,70 @@ export function BoardList({ list, activeCardId, overCardId }: BoardListProps) {
   };
 
   return (
-    <div className="w-80 flex-shrink-0 bg-zinc-800 rounded-lg p-4 flex flex-col h-fit cursor-default">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-white">{list.title}</h3>
-        <div className="relative">
-          <button
-            onClick={() => setShowMenu(!showMenu)}
-            className="p-1 hover:bg-zinc-700 rounded transition-colors cursor-pointer"
+    <Draggable draggableId={list.id} index={index}>
+      {(provided, snapshot) => (
+        <div
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          className={`w-80 flex-shrink-0 bg-zinc-800 rounded-lg p-4 flex flex-col h-fit ${
+            snapshot.isDragging ? 'opacity-50' : ''
+          }`}
+        >
+          <div {...provided.dragHandleProps} className="flex items-center justify-between mb-3 cursor-grab active:cursor-grabbing">
+            <h3 className="font-semibold text-white">{list.title}</h3>
+            <div className="relative">
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="p-1 hover:bg-zinc-700 rounded transition-colors cursor-pointer"
+              >
+                <MoreVertical className="text-zinc-400" size={16} />
+              </button>
+              {showMenu && (
+                <>
+                  {/* Backdrop to close menu */}
+                  <div
+                    className="fixed inset-0 z-[9]"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowMenu(false);
+                    }}
+                  />
+                  {/* Menu */}
+                  <div className="absolute right-0 mt-2 w-48 bg-zinc-900 rounded-lg border border-zinc-700 shadow-xl z-10">
+                    <button
+                      onClick={() => {
+                        deleteList(list.id);
+                        setShowMenu(false);
+                      }}
+                      className="w-full px-4 py-2 text-left text-red-400 hover:bg-zinc-800 rounded-lg flex items-center gap-2 cursor-pointer"
+                    >
+                      <Trash2 size={16} />
+                      Delete List
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+      <Droppable droppableId={list.id}>
+        {(provided, snapshot) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            className={`overflow-y-auto flex-1 scrollbar-hide ${
+              snapshot.isDraggingOver ? 'bg-zinc-700/30 rounded' : ''
+            }`}
           >
-            <MoreVertical className="text-zinc-400" size={16} />
-          </button>
-          {showMenu && (
-            <>
-              {/* Backdrop to close menu */}
-              <div
-                className="fixed inset-0 z-[9]"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowMenu(false);
-                }}
-              />
-              {/* Menu */}
-              <div className="absolute right-0 mt-2 w-48 bg-zinc-900 rounded-lg border border-zinc-700 shadow-xl z-10">
-                <button
-                  onClick={() => {
-                    deleteList(list.id);
-                    setShowMenu(false);
-                  }}
-                  className="w-full px-4 py-2 text-left text-red-400 hover:bg-zinc-800 rounded-lg flex items-center gap-2 cursor-pointer"
-                >
-                  <Trash2 size={16} />
-                  Delete List
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      <div
-        ref={setNodeRef}
-        className="max-h-[600px] overflow-y-auto flex-1 scrollbar-hide list-scroll-container"
-      >
-        <div className="space-y-2">
-          <SortableContext items={listCards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-            {listCards.map((card) => {
-              const isBeingDragged = card.id === activeCardId;
-              const showPlaceholder = activeCardId && overCardId === card.id && activeCardId !== card.id;
-
-              return (
-                <div key={card.id}>
-                  {showPlaceholder && (
-                    <div className="h-[40px] mb-2 bg-emerald-500/10 border-2 border-dashed border-emerald-500 rounded" />
-                  )}
-                  {!isBeingDragged && <CardItem card={card} />}
-                  {isBeingDragged && (
-                    <div className="h-[40px] bg-zinc-800/50 border-2 border-dashed border-zinc-600 rounded" />
-                  )}
-                </div>
-              );
-            })}
-          </SortableContext>
-
-          {listCards.length === 0 && isOver && activeCard && (
-            <div className="h-[40px] bg-emerald-500/10 border-2 border-dashed border-emerald-500 rounded" />
-          )}
-        </div>
-      </div>
+            <div className="space-y-2">
+              {listCards.map((card, index) => (
+                <CardItem key={card.id} card={card} index={index} />
+              ))}
+              {provided.placeholder}
+            </div>
+          </div>
+        )}
+      </Droppable>
 
       {isAddingCard ? (
         <div>
@@ -162,6 +148,8 @@ export function BoardList({ list, activeCardId, overCardId }: BoardListProps) {
           Add a card
         </button>
       )}
-    </div>
+        </div>
+      )}
+    </Draggable>
   );
 }

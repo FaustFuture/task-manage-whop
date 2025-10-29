@@ -2,7 +2,7 @@
 
 import { useStore } from '@/store/useStore';
 import { Card, TaskStatus } from '@/types';
-import { useSortable } from '@dnd-kit/sortable';
+import { Draggable } from '@hello-pangea/dnd';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { CheckSquare } from 'lucide-react';
 
@@ -43,26 +43,14 @@ const getAvailableStatuses = (currentStatus: TaskStatus): TaskStatus[] => {
 
 interface CardItemProps {
   card: Card;
+  index: number;
 }
 
-export function CardItem({ card }: CardItemProps) {
+export function CardItem({ card, index }: CardItemProps) {
   const { openCardModal, updateCard, subtasks } = useStore();
   const [showDropdown, setShowDropdown] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const buttonRef = useRef<HTMLButtonElement>(null);
-
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    isDragging,
-  } = useSortable({
-    id: card.id,
-    data: {
-      type: 'card',
-      card: card,
-    },
-  });
 
   // Calculate subtask stats
   const subtaskStats = useMemo(() => {
@@ -91,80 +79,86 @@ export function CardItem({ card }: CardItemProps) {
   const currentConfig = statusConfig[card.status];
 
   return (
-    <div
-      ref={setNodeRef}
-      {...attributes}
-      className="relative bg-zinc-900 rounded-lg border border-zinc-700 hover:border-zinc-600 group hover:bg-zinc-800/50 transition-all duration-200"
-    >
-      {/* Card Content */}
-      <div
-        {...listeners}
-        onClick={() => openCardModal(card.id)}
-        className={`px-3 py-1.5 ${isDragging ? 'cursor-grabbing' : 'cursor-pointer'}`}
-      >
-        <div className="flex items-center gap-2 mb-1">
-          {/* Status Badge - aligned with title */}
-          <button
-            ref={buttonRef}
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowDropdown(!showDropdown);
-            }}
-            className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${currentConfig.dotColor} hover:scale-125 transition-transform cursor-pointer`}
-            title={currentConfig.label}
-          />
-          <div className="text-sm leading-tight text-white select-none break-words flex-1">
-            {card.title}
-          </div>
-        </div>
-
-        {/* Subtask Count */}
-        {subtaskStats.hasSubtasks && (
-          <div className="flex items-center gap-1.5 ml-4 mt-1">
-            <CheckSquare size={12} className="text-zinc-500" />
-            <span className={`text-xs ${
-              subtaskStats.completed === subtaskStats.total
-                ? 'text-emerald-400'
-                : 'text-zinc-500'
-            }`}>
-              {subtaskStats.completed}/{subtaskStats.total}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Dropdown Menu - Rendered at root level with fixed positioning */}
-      {showDropdown && (
-        <>
-          {/* Backdrop to close dropdown */}
+    <Draggable draggableId={card.id} index={index}>
+      {(provided, snapshot) => (
+        <div
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          {...provided.dragHandleProps}
+          className={`relative bg-zinc-900 rounded-lg border border-zinc-700 hover:border-zinc-600 group hover:bg-zinc-800/50 ${
+            snapshot.isDragging ? 'opacity-50' : ''
+          }`}
+        >
+          {/* Card Content */}
           <div
-            className="fixed inset-0 z-[9998]"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowDropdown(false);
-            }}
-          />
-          {/* Dropdown */}
-          <div
-            className="fixed w-36 bg-zinc-800 rounded-lg border border-zinc-700 shadow-xl z-[9999] overflow-hidden"
-            style={{ top: `${dropdownPosition.top}px`, left: `${dropdownPosition.left}px` }}
+            onClick={() => openCardModal(card.id)}
+            className="px-3 py-1.5 cursor-pointer"
           >
-            {availableStatuses.map((status) => (
+            <div className="flex items-center gap-2 mb-1">
+              {/* Status Badge - aligned with title */}
               <button
-                key={status}
+                ref={buttonRef}
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleStatusChange(status);
+                  setShowDropdown(!showDropdown);
                 }}
-                className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-colors hover:bg-zinc-700 ${statusConfig[status].textColor}`}
-              >
-                <div className={`w-2 h-2 rounded-full ${statusConfig[status].dotColor}`} />
-                {statusConfig[status].label}
-              </button>
-            ))}
+                className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${currentConfig.dotColor} hover:scale-125 transition-transform cursor-pointer`}
+                title={currentConfig.label}
+              />
+              <div className="text-sm leading-tight text-white select-none break-words flex-1">
+                {card.title}
+              </div>
+            </div>
+
+            {/* Subtask Count */}
+            {subtaskStats.hasSubtasks && (
+              <div className="flex items-center gap-1.5 ml-4 mt-1">
+                <CheckSquare size={12} className="text-zinc-500" />
+                <span className={`text-xs ${
+                  subtaskStats.completed === subtaskStats.total
+                    ? 'text-emerald-400'
+                    : 'text-zinc-500'
+                }`}>
+                  {subtaskStats.completed}/{subtaskStats.total}
+                </span>
+              </div>
+            )}
           </div>
-        </>
+
+          {/* Dropdown Menu - Rendered at root level with fixed positioning */}
+          {showDropdown && (
+            <>
+              {/* Backdrop to close dropdown */}
+              <div
+                className="fixed inset-0 z-[9998]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDropdown(false);
+                }}
+              />
+              {/* Dropdown */}
+              <div
+                className="fixed w-36 bg-zinc-800 rounded-lg border border-zinc-700 shadow-xl z-[9999] overflow-hidden"
+                style={{ top: `${dropdownPosition.top}px`, left: `${dropdownPosition.left}px` }}
+              >
+                {availableStatuses.map((status) => (
+                  <button
+                    key={status}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStatusChange(status);
+                    }}
+                    className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-colors hover:bg-zinc-700 ${statusConfig[status].textColor}`}
+                  >
+                    <div className={`w-2 h-2 rounded-full ${statusConfig[status].dotColor}`} />
+                    {statusConfig[status].label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       )}
-    </div>
+    </Draggable>
   );
 }
