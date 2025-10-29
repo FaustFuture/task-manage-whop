@@ -31,7 +31,7 @@ const statusConfig: Record<TaskStatus, { label: string; dotColor: string; bgColo
 const getAvailableStatuses = (currentStatus: TaskStatus): TaskStatus[] => {
   switch (currentStatus) {
     case 'not_started':
-      return ['in_progress'];
+      return ['in_progress', 'done'];
     case 'in_progress':
       return ['not_started', 'done'];
     case 'done':
@@ -57,6 +57,10 @@ export function CardItem({ card }: CardItemProps) {
     setNodeRef,
   } = useSortable({
     id: card.id,
+    data: {
+      type: 'card',
+      card: card,
+    },
   });
 
   // Calculate subtask stats
