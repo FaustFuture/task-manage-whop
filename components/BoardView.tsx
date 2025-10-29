@@ -148,18 +148,19 @@ export function BoardView() {
         const reordered = arrayMove(cardsInTargetList, activeIndex, overIndex);
 
         reordered.forEach((card, index) => {
-          moveCard(card.id, targetListId, index);
+          // Only show toast for the actively dragged card
+          moveCard(card.id, targetListId, index, card.id === activeId);
         });
       } else {
         // Different list - move to position
-        // First move the card
-        moveCard(activeCard.id, targetListId, overIndex);
+        // First move the card (show toast)
+        moveCard(activeCard.id, targetListId, overIndex, true);
 
-        // Then reorder the rest
+        // Then reorder the rest (suppress toasts)
         const filteredList = cardsInTargetList.filter(c => c.id !== activeCard.id);
         filteredList.forEach((card, index) => {
           const newIndex = index >= overIndex ? index + 1 : index;
-          moveCard(card.id, targetListId, newIndex);
+          moveCard(card.id, targetListId, newIndex, false);
         });
       }
     }

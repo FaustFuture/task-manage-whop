@@ -52,7 +52,8 @@ interface StoreState {
   moveCard: (
     cardId: string,
     newListId: string,
-    newOrder: number
+    newOrder: number,
+    showToast?: boolean
   ) => Promise<void>;
   openCardModal: (cardId: string) => void;
   closeCardModal: () => void;
@@ -270,7 +271,7 @@ export const useStore = create<StoreState>()((set) => ({
     }
   },
 
-  moveCard: async (cardId, newListId, newOrder) => {
+  moveCard: async (cardId, newListId, newOrder, showToast = true) => {
     try {
       const card = useStore.getState().cards.find((c) => c.id === cardId);
 
@@ -283,10 +284,15 @@ export const useStore = create<StoreState>()((set) => ({
 
       // Persist to database
       await api.cards.update(cardId, { listId: newListId, order: newOrder });
-      toast.success(`"${card?.title || "Card"}" moved successfully`);
+
+      if (showToast) {
+        toast.success(`"${card?.title || "Card"}" moved successfully`);
+      }
     } catch (error) {
       console.error("Failed to move card:", error);
-      toast.error("Failed to move card");
+      if (showToast) {
+        toast.error("Failed to move card");
+      }
     }
   },
 

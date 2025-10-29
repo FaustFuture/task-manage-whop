@@ -55,6 +55,7 @@ export function CardItem({ card }: CardItemProps) {
     attributes,
     listeners,
     setNodeRef,
+    isDragging,
   } = useSortable({
     id: card.id,
     data: {
@@ -99,7 +100,7 @@ export function CardItem({ card }: CardItemProps) {
       <div
         {...listeners}
         onClick={() => openCardModal(card.id)}
-        className="px-3 py-1.5 cursor-grab active:cursor-grabbing"
+        className={`px-3 py-1.5 ${isDragging ? 'cursor-grabbing' : 'cursor-pointer'}`}
       >
         <div className="flex items-center gap-2 mb-1">
           {/* Status Badge - aligned with title */}
