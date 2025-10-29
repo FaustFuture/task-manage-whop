@@ -3,7 +3,7 @@
 import { useStore } from '@/store/useStore';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { BoardList as ListComponent } from './List';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   DndContext,
   DragEndEvent,
@@ -24,6 +24,10 @@ export function BoardView() {
   const [newListTitle, setNewListTitle] = useState('');
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
 
   const currentBoard = boards.find((b) => b.id === selectedBoardId);
   const boardLists = lists
@@ -37,6 +41,50 @@ export function BoardView() {
       },
     })
   );
+
+  // Convert vertical scroll to horizontal scroll
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // Always convert vertical scroll to horizontal scroll
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        scrollContainer.scrollLeft += e.deltaY;
+      }
+    };
+
+    scrollContainer.addEventListener('wheel', handleWheel, { passive: false });
+    return () => scrollContainer.removeEventListener('wheel', handleWheel);
+  }, []);
+
+  // Drag-to-scroll functionality
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Only start dragging if clicking on the scroll container itself (not on lists or cards)
+    if (e.target === scrollContainerRef.current ||
+        (e.target as HTMLElement).classList.contains('board-drag-area')) {
+      setIsDragging(true);
+      setStartX(e.pageX - (scrollContainerRef.current?.offsetLeft || 0));
+      setScrollLeft(scrollContainerRef.current?.scrollLeft || 0);
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !scrollContainerRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - (scrollContainerRef.current.offsetLeft || 0);
+    const walk = (x - startX) * 1.5; // Multiply by 1.5 for faster scrolling
+    scrollContainerRef.current.scrollLeft = scrollLeft - walk;
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
 
   if (!currentBoard) return null;
 
@@ -138,8 +186,15 @@ export function BoardView() {
           <h1 className="text-xl font-bold text-white">{currentBoard.title}</h1>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(320px,100%),1fr))] gap-4 auto-rows-max">
+        <div
+          ref={scrollContainerRef}
+          className={`flex-1 overflow-x-auto overflow-y-hidden p-8 ${isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'}`}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
+        >
+          <div className="flex gap-4 h-full board-drag-area">
             {isLoadingLists || isLoadingCards ? (
               // Show skeleton loaders while loading
               <>
@@ -159,7 +214,7 @@ export function BoardView() {
             )}
 
             {isAddingList ? (
-              <div className="w-full bg-zinc-800 rounded-lg p-4 h-fit">
+              <div className="w-80 flex-shrink-0 bg-zinc-800 rounded-lg p-4 h-fit cursor-default">
                 <input
                   type="text"
                   value={newListTitle}
@@ -196,7 +251,7 @@ export function BoardView() {
             ) : (
               <button
                 onClick={() => setIsAddingList(true)}
-                className="w-full px-3 py-2 bg-zinc-800/50 hover:bg-zinc-800 rounded-lg border-2 border-dashed border-zinc-700 hover:border-emerald-500 transition-all flex items-center justify-center gap-2 text-zinc-400 hover:text-emerald-500 cursor-pointer text-sm h-fit"
+                className="w-80 flex-shrink-0 px-3 py-2 bg-zinc-800/50 hover:bg-zinc-800 rounded-lg border-2 border-dashed border-zinc-700 hover:border-emerald-500 transition-all flex items-center justify-center gap-2 text-zinc-400 hover:text-emerald-500 text-sm h-fit cursor-pointer"
               >
                 <Plus size={16} />
                 Add List

@@ -20,7 +20,7 @@ export function BoardSkeleton() {
 // List skeleton - matches List component structure
 export function ListSkeleton() {
   return (
-    <div className="w-full bg-zinc-800 rounded-lg p-4 flex flex-col animate-pulse h-fit">
+    <div className="w-80 flex-shrink-0 bg-zinc-800 rounded-lg p-4 flex flex-col animate-pulse h-fit cursor-default">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="h-5 bg-zinc-700 rounded w-24" />

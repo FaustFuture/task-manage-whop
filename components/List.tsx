@@ -42,7 +42,7 @@ export function BoardList({ list, activeCardId, overCardId }: BoardListProps) {
   };
 
   return (
-    <div className="w-full bg-zinc-800 rounded-lg p-4 flex flex-col h-fit">
+    <div className="w-80 flex-shrink-0 bg-zinc-800 rounded-lg p-4 flex flex-col h-fit cursor-default">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-white">{list.title}</h3>
         <div className="relative">
@@ -82,7 +82,7 @@ export function BoardList({ list, activeCardId, overCardId }: BoardListProps) {
 
       <div
         ref={setNodeRef}
-        className="max-h-[600px] overflow-y-auto flex-1 scrollbar-hide"
+        className="max-h-[600px] overflow-y-auto flex-1 scrollbar-hide list-scroll-container"
       >
         <div className="space-y-2">
           <SortableContext items={listCards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
