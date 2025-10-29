@@ -138,8 +138,8 @@ export function BoardView() {
           <h1 className="text-xl font-bold text-white">{currentBoard.title}</h1>
         </div>
 
-        <div className="flex-1 overflow-x-auto p-8 scrollbar-emerald">
-          <div className="flex gap-4 items-start">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(320px,100%),1fr))] gap-4 auto-rows-max">
             {isLoadingLists || isLoadingCards ? (
               // Show skeleton loaders while loading
               <>
@@ -159,7 +159,7 @@ export function BoardView() {
             )}
 
             {isAddingList ? (
-              <div className="flex-shrink-0 w-72 bg-zinc-800 rounded-lg p-4">
+              <div className="w-full bg-zinc-800 rounded-lg p-4 h-fit">
                 <input
                   type="text"
                   value={newListTitle}
@@ -196,7 +196,7 @@ export function BoardView() {
             ) : (
               <button
                 onClick={() => setIsAddingList(true)}
-                className="flex-shrink-0 w-72 px-3 py-2 bg-zinc-800/50 hover:bg-zinc-800 rounded-lg border-2 border-dashed border-zinc-700 hover:border-emerald-500 transition-all flex items-center gap-2 text-zinc-400 hover:text-emerald-500 cursor-pointer text-sm"
+                className="w-full px-3 py-2 bg-zinc-800/50 hover:bg-zinc-800 rounded-lg border-2 border-dashed border-zinc-700 hover:border-emerald-500 transition-all flex items-center justify-center gap-2 text-zinc-400 hover:text-emerald-500 cursor-pointer text-sm h-fit"
               >
                 <Plus size={16} />
                 Add List

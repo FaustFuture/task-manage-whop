@@ -13,6 +13,7 @@ interface UserDetailModalProps {
   cards: Card[];
   lists: List[];
   onClose: () => void;
+  onCardClick: (cardId: string, boardId: string) => void;
 }
 
 const statusConfig: Record<TaskStatus, { label: string; bgColor: string; textColor: string; borderColor: string }> = {
@@ -36,15 +37,17 @@ const statusConfig: Record<TaskStatus, { label: string; bgColor: string; textCol
   },
 };
 
-export function UserDetailModal({ user, extendedData, boards, cards, lists, onClose }: UserDetailModalProps) {
+export function UserDetailModal({ user, extendedData, boards, cards, lists, onClose, onCardClick }: UserDetailModalProps) {
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
-  const [boardFilter, setBoardFilter] = useState<string | 'all'>('all');
 
   // Get user's boards
   const userBoards = useMemo(() =>
-    boards.filter(board => board.members.includes(user.id)),
+    boards.filter(board => board.users.includes(user.id)),
     [boards, user.id]
   );
+
+  // Initialize with first board or 'all'
+  const [selectedBoardId, setSelectedBoardId] = useState<string | 'all'>('all');
 
   // Get user's cards
   const userCards = useMemo(() =>
@@ -71,15 +74,15 @@ export function UserDetailModal({ user, extendedData, boards, cards, lists, onCl
       filtered = filtered.filter(card => card.status === statusFilter);
     }
 
-    if (boardFilter !== 'all') {
-      const boardLists = lists.filter(list => list.boardId === boardFilter);
+    if (selectedBoardId !== 'all') {
+      const boardLists = lists.filter(list => list.boardId === selectedBoardId);
       filtered = filtered.filter(card =>
         boardLists.some(list => list.id === card.listId)
       );
     }
 
     return filtered;
-  }, [userCards, statusFilter, boardFilter, lists]);
+  }, [userCards, statusFilter, selectedBoardId, lists]);
 
   // Group cards by board
   const cardsByBoard = useMemo(() => {
@@ -181,12 +184,52 @@ export function UserDetailModal({ user, extendedData, boards, cards, lists, onCl
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="border-b border-zinc-700 p-4 bg-zinc-800/50">
+        {/* Board Tabs */}
+        {userBoards.length > 0 && (
+          <div className="border-b border-zinc-700 bg-zinc-800/50">
+            <div className="flex items-center gap-2 px-4 py-3 overflow-x-auto scrollbar-thin">
+              <button
+                onClick={() => setSelectedBoardId('all')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                  selectedBoardId === 'all'
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
+                }`}
+              >
+                All Boards ({userBoards.length})
+              </button>
+              {userBoards.map(board => {
+                const boardLists = lists.filter(l => l.boardId === board.id);
+                const boardTaskCount = userCards.filter(c =>
+                  boardLists.some(l => l.id === c.listId)
+                ).length;
+
+                return (
+                  <button
+                    key={board.id}
+                    onClick={() => setSelectedBoardId(board.id)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2 ${
+                      selectedBoardId === board.id
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
+                    }`}
+                  >
+                    <Folder size={14} />
+                    {board.title}
+                    <span className="text-xs opacity-70">({boardTaskCount})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Status Filters */}
+        <div className="border-b border-zinc-700 p-4 bg-zinc-800/30">
           <div className="flex flex-wrap gap-3 items-center">
             <div className="flex items-center gap-2">
               <Filter size={18} className="text-zinc-400" />
-              <span className="text-sm text-zinc-400">Filters:</span>
+              <span className="text-sm text-zinc-400">Status:</span>
             </div>
 
             {/* Status Filter */}
@@ -201,29 +244,10 @@ export function UserDetailModal({ user, extendedData, boards, cards, lists, onCl
                       : 'bg-zinc-800 text-zinc-400 hover:text-white'
                   }`}
                 >
-                  {status === 'all' ? 'All Status' : statusConfig[status].label}
+                  {status === 'all' ? 'All' : statusConfig[status].label}
                 </button>
               ))}
             </div>
-
-            {/* Board Filter */}
-            {userBoards.length > 1 && (
-              <>
-                <div className="w-px h-6 bg-zinc-700" />
-                <select
-                  value={boardFilter}
-                  onChange={(e) => setBoardFilter(e.target.value)}
-                  className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-                >
-                  <option value="all">All Boards ({userBoards.length})</option>
-                  {userBoards.map(board => (
-                    <option key={board.id} value={board.id}>
-                      {board.title}
-                    </option>
-                  ))}
-                </select>
-              </>
-            )}
 
             <div className="ml-auto text-sm text-zinc-400">
               Showing {filteredCards.length} of {stats.total} tasks
@@ -233,42 +257,6 @@ export function UserDetailModal({ user, extendedData, boards, cards, lists, onCl
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 scrollbar-emerald">
-          {/* Boards Section */}
-          {userBoards.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <Folder className="text-indigo-500" size={20} />
-                Member of {userBoards.length} Board{userBoards.length !== 1 ? 's' : ''}
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {userBoards.map(board => {
-                  const boardLists = lists.filter(l => l.boardId === board.id);
-                  const boardCards = userCards.filter(c =>
-                    boardLists.some(l => l.id === c.listId)
-                  );
-
-                  return (
-                    <div
-                      key={board.id}
-                      className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 hover:border-emerald-500/50 transition-colors cursor-pointer"
-                      onClick={() => setBoardFilter(board.id)}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded flex items-center justify-center">
-                          <Folder className="text-white" size={16} />
-                        </div>
-                        <h4 className="text-white font-medium truncate flex-1">{board.title}</h4>
-                      </div>
-                      <p className="text-sm text-zinc-400">
-                        {boardCards.length} task{boardCards.length !== 1 ? 's' : ''} assigned
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {/* Tasks Section */}
           <div>
             <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -280,11 +268,11 @@ export function UserDetailModal({ user, extendedData, boards, cards, lists, onCl
               <div className="text-center py-12 text-zinc-500">
                 <CheckSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
                 <p>No tasks found</p>
-                {(statusFilter !== 'all' || boardFilter !== 'all') && (
+                {(statusFilter !== 'all' || selectedBoardId !== 'all') && (
                   <button
                     onClick={() => {
                       setStatusFilter('all');
-                      setBoardFilter('all');
+                      setSelectedBoardId('all');
                     }}
                     className="mt-2 text-emerald-500 hover:text-emerald-400 text-sm"
                   >
@@ -316,9 +304,10 @@ export function UserDetailModal({ user, extendedData, boards, cards, lists, onCl
                           const config = statusConfig[card.status];
 
                           return (
-                            <div
+                            <button
                               key={card.id}
-                              className={`bg-zinc-800 border ${config.borderColor} rounded-lg p-4 hover:bg-zinc-800/80 transition-colors`}
+                              onClick={() => onCardClick(card.id, boardId)}
+                              className={`bg-zinc-800 border ${config.borderColor} rounded-lg p-4 hover:bg-zinc-700 hover:border-emerald-500/50 transition-all text-left cursor-pointer`}
                             >
                               <div className="flex items-start justify-between mb-2">
                                 <h5 className="text-white font-medium flex-1">{card.title}</h5>
@@ -359,7 +348,7 @@ export function UserDetailModal({ user, extendedData, boards, cards, lists, onCl
                                   </span>
                                 )}
                               </div>
-                            </div>
+                            </button>
                           );
                         })}
                       </div>

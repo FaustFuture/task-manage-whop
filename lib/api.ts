@@ -36,7 +36,7 @@ export const api = {
       const res = await fetch(url);
       return res.json();
     },
-    create: async (data: { title: string; createdBy: string | null; members?: string[] }) => {
+    create: async (data: { title: string; createdBy: string | null; users?: string[] }) => {
       const res = await fetch('/api/boards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -44,7 +44,7 @@ export const api = {
       });
       return res.json();
     },
-    update: async (id: string, data: Partial<{ title: string; members: string[] }>) => {
+    update: async (id: string, data: Partial<{ title: string; users: string[] }>) => {
       const res = await fetch(`/api/boards/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },

@@ -12,7 +12,7 @@ export async function GET(
       .from('boards')
       .select(`
         *,
-        board_members (
+        board_users (
           user_id
         )
       `)
@@ -31,8 +31,8 @@ export async function GET(
     // Transform data
     const transformedBoard = {
       ...board,
-      members: board.board_members?.map((bm: any) => bm.user_id) || [],
-      board_members: undefined,
+      users: board.board_users?.map((bu: any) => bu.user_id) || [],
+      board_users: undefined,
       createdAt: new Date(board.created_at),
     };
 
@@ -54,7 +54,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { title, members } = body;
+    const { title, users } = body;
 
     const updates: any = {};
     if (title) updates.title = title;
@@ -76,30 +76,30 @@ export async function PATCH(
       );
     }
 
-    // Update members if provided
-    if (members && Array.isArray(members)) {
-      // Delete existing members
+    // Update users if provided
+    if (users && Array.isArray(users)) {
+      // Delete existing users
       await supabase
-        .from('board_members')
+        .from('board_users')
         .delete()
         .eq('board_id', id);
 
-      // Add new members
-      if (members.length > 0) {
-        const boardMembers = members.map((userId: string) => ({
+      // Add new users
+      if (users.length > 0) {
+        const boardUsers = users.map((userId: string) => ({
           board_id: id,
           user_id: userId,
         }));
 
         await supabase
-          .from('board_members')
-          .insert(boardMembers);
+          .from('board_users')
+          .insert(boardUsers);
       }
     }
 
-    // Fetch updated members
-    const { data: boardMembers } = await supabase
-      .from('board_members')
+    // Fetch updated users
+    const { data: boardUsers } = await supabase
+      .from('board_users')
       .select('user_id')
       .eq('board_id', id);
 
@@ -107,7 +107,7 @@ export async function PATCH(
       {
         data: {
           ...board,
-          members: boardMembers?.map(bm => bm.user_id) || [],
+          users: boardUsers?.map(bu => bu.user_id) || [],
           createdAt: new Date(board.created_at),
         }
       },

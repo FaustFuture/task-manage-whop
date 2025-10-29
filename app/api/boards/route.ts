@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       .from('boards')
       .select(`
         *,
-        board_members (
+        board_users (
           user_id
         )
       `)
@@ -20,12 +20,12 @@ export async function GET(request: NextRequest) {
     // Optionally filter by user
     if (userId) {
       // First, get the board IDs for the user
-      const { data: memberBoards } = await supabase
-        .from('board_members')
+      const { data: userBoards } = await supabase
+        .from('board_users')
         .select('board_id')
         .eq('user_id', userId);
 
-      const boardIds = memberBoards?.map(bm => bm.board_id) || [];
+      const boardIds = userBoards?.map(ub => ub.board_id) || [];
 
       if (boardIds.length > 0) {
         query = query.in('id', boardIds);
@@ -64,8 +64,8 @@ export async function GET(request: NextRequest) {
 
         return {
           ...board,
-          members: board.board_members?.map((bm: any) => bm.user_id) || [],
-          board_members: undefined,
+          users: board.board_users?.map((bu: any) => bu.user_id) || [],
+          board_users: undefined,
           createdAt: new Date(board.created_at),
           taskCount,
         };
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { title, createdBy, members } = body;
+    const { title, createdBy, users } = body;
 
     if (!title) {
       return NextResponse.json(
@@ -104,26 +104,26 @@ export async function POST(request: NextRequest) {
 
     if (boardError) throw boardError;
 
-    // Add board members if provided
-    const membersList = members || (createdBy ? [createdBy] : []);
-    if (membersList.length > 0) {
-      const boardMembers = membersList.map((userId: string) => ({
+    // Add board users if provided
+    const usersList = users || (createdBy ? [createdBy] : []);
+    if (usersList.length > 0) {
+      const boardUsers = usersList.map((userId: string) => ({
         board_id: board.id,
         user_id: userId,
       }));
 
-      const { error: membersError } = await supabase
-        .from('board_members')
-        .insert(boardMembers);
+      const { error: usersError } = await supabase
+        .from('board_users')
+        .insert(boardUsers);
 
-      if (membersError) throw membersError;
+      if (usersError) throw usersError;
     }
 
     return NextResponse.json(
       {
         data: {
           ...board,
-          members: membersList,
+          users: usersList,
           createdAt: new Date(board.created_at),
           taskCount: 0,
         }

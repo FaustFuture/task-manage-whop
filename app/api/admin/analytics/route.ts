@@ -92,8 +92,8 @@ export async function GET() {
       const userDone = userCards.filter((c) => c.status === 'done').length;
       const userTotal = userCards.length;
 
-      // Calculate boards user is member of
-      const userBoards = boards.filter((b) => b.members?.includes(user.id));
+      // Calculate boards user is part of
+      const userBoards = boards.filter((b) => b.users?.includes(user.id));
 
       return {
         userId: user.id,

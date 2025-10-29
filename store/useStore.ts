@@ -1,6 +1,7 @@
-import { create } from 'zustand';
-import { User, Board, List, Card, Subtask, ViewMode, Analytics } from '@/types';
-import { api } from '@/lib/api';
+import { create } from "zustand";
+import { User, Board, List, Card, Subtask, ViewMode, Analytics } from "@/types";
+import { api } from "@/lib/api";
+import { toast } from "@/contexts/ToastContext";
 
 interface StoreState {
   // Auth & View
@@ -48,7 +49,11 @@ interface StoreState {
   addCard: (listId: string, title: string) => Promise<void>;
   updateCard: (id: string, updates: Partial<Card>) => Promise<void>;
   deleteCard: (id: string) => Promise<void>;
-  moveCard: (cardId: string, newListId: string, newOrder: number) => Promise<void>;
+  moveCard: (
+    cardId: string,
+    newListId: string,
+    newOrder: number
+  ) => Promise<void>;
   openCardModal: (cardId: string) => void;
   closeCardModal: () => void;
 
@@ -58,7 +63,11 @@ interface StoreState {
   deleteSubtask: (id: string) => Promise<void>;
 
   // User actions
-  addUser: (name: string, email: string, role: 'admin' | 'member') => Promise<void>;
+  addUser: (
+    name: string,
+    email: string,
+    role: "admin" | "member"
+  ) => Promise<void>;
   loadUsers: () => Promise<void>;
 
   // Admin Analytics
@@ -75,7 +84,7 @@ interface StoreState {
 export const useStore = create<StoreState>()((set) => ({
   // Initial state - will be loaded from Supabase
   currentUser: null,
-  viewMode: 'member',
+  viewMode: "member",
   users: [],
   boards: [],
   lists: [],
@@ -105,27 +114,37 @@ export const useStore = create<StoreState>()((set) => ({
       const result = await api.boards.create({
         title,
         createdBy: state.currentUser?.id || null,
-        members: state.currentUser?.id ? [state.currentUser.id] : [],
+        users: state.currentUser?.id ? [state.currentUser.id] : [],
       });
 
       if (result.data) {
         set((state) => ({
           boards: [...state.boards, result.data],
         }));
+        toast.success(`Board "${title}" created successfully`);
       } else if (result.error) {
-        console.error('Error creating board:', result.error);
+        console.error("Error creating board:", result.error);
+        toast.error("Failed to create board");
       }
     } catch (error) {
-      console.error('Failed to create board:', error);
+      console.error("Failed to create board:", error);
+      toast.error("Failed to create board");
     }
   },
 
   deleteBoard: async (id) => {
-    await api.boards.delete(id);
-    set((state) => ({
-      boards: state.boards.filter((b) => b.id !== id),
-      lists: state.lists.filter((l) => l.boardId !== id),
-    }));
+    try {
+      const board = useStore.getState().boards.find((b) => b.id === id);
+      await api.boards.delete(id);
+      set((state) => ({
+        boards: state.boards.filter((b) => b.id !== id),
+        lists: state.lists.filter((l) => l.boardId !== id),
+      }));
+      toast.success(`Board "${board?.title || ""}" deleted successfully`);
+    } catch (error) {
+      console.error("Failed to delete board:", error);
+      toast.error("Failed to delete board");
+    }
   },
 
   setSelectedBoard: (id) => set({ selectedBoardId: id }),
@@ -139,29 +158,44 @@ export const useStore = create<StoreState>()((set) => ({
         set((state) => ({
           lists: [...state.lists, result.data],
         }));
+        toast.success(`List "${title}" created successfully`);
       } else if (result.error) {
-        console.error('Error creating list:', result.error);
+        console.error("Error creating list:", result.error);
+        toast.error("Failed to create list");
       }
     } catch (error) {
-      console.error('Failed to create list:', error);
+      console.error("Failed to create list:", error);
+      toast.error("Failed to create list");
     }
   },
 
   deleteList: async (id) => {
-    await api.lists.delete(id);
-    set((state) => ({
-      lists: state.lists.filter((l) => l.id !== id),
-      cards: state.cards.filter((c) => c.listId !== id),
-    }));
+    try {
+      const list = useStore.getState().lists.find((l) => l.id === id);
+      await api.lists.delete(id);
+      set((state) => ({
+        lists: state.lists.filter((l) => l.id !== id),
+        cards: state.cards.filter((c) => c.listId !== id),
+      }));
+      toast.success(`List "${list?.title || ""}" deleted successfully`);
+    } catch (error) {
+      console.error("Failed to delete list:", error);
+      toast.error("Failed to delete list");
+    }
   },
 
   updateListOrder: async (listId, newOrder) => {
-    await api.lists.update(listId, { order: newOrder });
-    set((state) => ({
-      lists: state.lists.map((l) =>
-        l.id === listId ? { ...l, order: newOrder } : l
-      ),
-    }));
+    try {
+      await api.lists.update(listId, { order: newOrder });
+      set((state) => ({
+        lists: state.lists.map((l) =>
+          l.id === listId ? { ...l, order: newOrder } : l
+        ),
+      }));
+    } catch (error) {
+      console.error("Failed to update list order:", error);
+      toast.error("Failed to update list order");
+    }
   },
 
   // Card actions
@@ -179,44 +213,85 @@ export const useStore = create<StoreState>()((set) => ({
         set((state) => ({
           cards: [...state.cards, result.data],
         }));
+        toast.success(`Card "${title}" created successfully`);
       } else if (result.error) {
-        console.error('Error creating card:', result.error);
+        console.error("Error creating card:", result.error);
+        toast.error("Failed to create card");
       }
     } catch (error) {
-      console.error('Failed to create card:', error);
+      console.error("Failed to create card:", error);
+      toast.error("Failed to create card");
     }
   },
 
   updateCard: async (id, updates) => {
-    await api.cards.update(id, updates);
-    set((state) => ({
-      cards: state.cards.map((c) =>
-        c.id === id ? { ...c, ...updates } : c
-      ),
-    }));
+    try {
+      const card = useStore.getState().cards.find((c) => c.id === id);
+      await api.cards.update(id, updates);
+      set((state) => ({
+        cards: state.cards.map((c) => (c.id === id ? { ...c, ...updates } : c)),
+      }));
+
+      // Show toast for status updates
+      if (updates.status) {
+        const statusLabels = {
+          not_started: "Not Started",
+          in_progress: "In Progress",
+          done: "Done",
+        };
+        toast.success(
+          `"${card?.title || "Card"}" status updated to ${
+            statusLabels[updates.status]
+          }`
+        );
+      } else if (updates.title) {
+        toast.success(`Card renamed to "${updates.title}"`);
+      } else if (updates.description !== undefined) {
+        toast.success(`"${card?.title || "Card"}" updated successfully`);
+      }
+    } catch (error) {
+      console.error("Failed to update card:", error);
+      toast.error("Failed to update card");
+    }
   },
 
   deleteCard: async (id) => {
-    await api.cards.delete(id);
-    set((state) => ({
-      cards: state.cards.filter((c) => c.id !== id),
-      subtasks: state.subtasks.filter((s) => s.cardId !== id),
-    }));
+    try {
+      const card = useStore.getState().cards.find((c) => c.id === id);
+      await api.cards.delete(id);
+      set((state) => ({
+        cards: state.cards.filter((c) => c.id !== id),
+        subtasks: state.subtasks.filter((s) => s.cardId !== id),
+      }));
+      toast.success(`Card "${card?.title || ""}" deleted successfully`);
+    } catch (error) {
+      console.error("Failed to delete card:", error);
+      toast.error("Failed to delete card");
+    }
   },
 
   moveCard: async (cardId, newListId, newOrder) => {
-    // Optimistic update
-    set((state) => ({
-      cards: state.cards.map((c) =>
-        c.id === cardId ? { ...c, listId: newListId, order: newOrder } : c
-      ),
-    }));
+    try {
+      const card = useStore.getState().cards.find((c) => c.id === cardId);
 
-    // Persist to database
-    await api.cards.update(cardId, { listId: newListId, order: newOrder });
+      // Optimistic update
+      set((state) => ({
+        cards: state.cards.map((c) =>
+          c.id === cardId ? { ...c, listId: newListId, order: newOrder } : c
+        ),
+      }));
+
+      // Persist to database
+      await api.cards.update(cardId, { listId: newListId, order: newOrder });
+      toast.success(`"${card?.title || "Card"}" moved successfully`);
+    } catch (error) {
+      console.error("Failed to move card:", error);
+      toast.error("Failed to move card");
+    }
   },
 
-  openCardModal: (cardId) => set({ selectedCardId: cardId, isCardModalOpen: true }),
+  openCardModal: (cardId) =>
+    set({ selectedCardId: cardId, isCardModalOpen: true }),
 
   closeCardModal: () => set({ selectedCardId: null, isCardModalOpen: false }),
 
@@ -229,11 +304,14 @@ export const useStore = create<StoreState>()((set) => ({
         set((state) => ({
           subtasks: [...state.subtasks, result.data],
         }));
+        toast.success(`Subtask "${title}" created successfully`);
       } else if (result.error) {
-        console.error('Error creating subtask:', result.error);
+        console.error("Error creating subtask:", result.error);
+        toast.error("Failed to create subtask");
       }
     } catch (error) {
-      console.error('Failed to create subtask:', error);
+      console.error("Failed to create subtask:", error);
+      toast.error("Failed to create subtask");
     }
   },
 
@@ -242,38 +320,70 @@ export const useStore = create<StoreState>()((set) => ({
     const subtask = state.subtasks.find((s) => s.id === id);
     if (!subtask) return;
 
-    const newCompleted = !subtask.isCompleted;
-    await api.subtasks.update(id, { isCompleted: newCompleted });
+    try {
+      const newCompleted = !subtask.isCompleted;
+      await api.subtasks.update(id, { isCompleted: newCompleted });
 
-    set((state) => ({
-      subtasks: state.subtasks.map((s) =>
-        s.id === id ? { ...s, isCompleted: newCompleted } : s
-      ),
-    }));
+      set((state) => ({
+        subtasks: state.subtasks.map((s) =>
+          s.id === id ? { ...s, isCompleted: newCompleted } : s
+        ),
+      }));
+      toast.success(
+        newCompleted
+          ? `"${subtask.title}" completed`
+          : `"${subtask.title}" reopened`
+      );
+    } catch (error) {
+      console.error("Failed to toggle subtask:", error);
+      toast.error("Failed to update subtask");
+    }
   },
 
   deleteSubtask: async (id) => {
-    await api.subtasks.delete(id);
-    set((state) => ({
-      subtasks: state.subtasks.filter((s) => s.id !== id),
-    }));
+    try {
+      const subtask = useStore.getState().subtasks.find((s) => s.id === id);
+      await api.subtasks.delete(id);
+      set((state) => ({
+        subtasks: state.subtasks.filter((s) => s.id !== id),
+      }));
+      toast.success(`Subtask "${subtask?.title || ""}" deleted successfully`);
+    } catch (error) {
+      console.error("Failed to delete subtask:", error);
+      toast.error("Failed to delete subtask");
+    }
   },
 
   // User actions
   addUser: async (name, email, role) => {
-    const result = await api.users.create({ name, email, role });
+    try {
+      const result = await api.users.create({ name, email, role });
 
-    if (result.data) {
-      set((state) => ({
-        users: [...state.users, result.data],
-      }));
+      if (result.data) {
+        set((state) => ({
+          users: [...state.users, result.data],
+        }));
+        toast.success(`User "${name}" created successfully`);
+      } else {
+        toast.error("Failed to create user");
+      }
+    } catch (error) {
+      console.error("Failed to create user:", error);
+      toast.error("Failed to create user");
     }
   },
 
   loadUsers: async () => {
-    const result = await api.users.getAll();
-    if (result.data) {
-      set({ users: result.data });
+    try {
+      const result = await api.users.getAll();
+      if (result.data) {
+        set({ users: result.data });
+      } else {
+        toast.error("Failed to load users");
+      }
+    } catch (error) {
+      console.error("Failed to load users:", error);
+      toast.error("Failed to load users");
     }
   },
 
@@ -284,7 +394,12 @@ export const useStore = create<StoreState>()((set) => ({
       const result = await api.boards.getAll();
       if (result.data) {
         set({ boards: result.data });
+      } else {
+        toast.error("Failed to load boards");
       }
+    } catch (error) {
+      console.error("Failed to load boards:", error);
+      toast.error("Failed to load boards");
     } finally {
       set({ isLoadingBoards: false });
     }
@@ -296,7 +411,12 @@ export const useStore = create<StoreState>()((set) => ({
       const result = await api.lists.getAll(boardId);
       if (result.data) {
         set({ lists: result.data });
+      } else {
+        toast.error("Failed to load lists");
       }
+    } catch (error) {
+      console.error("Failed to load lists:", error);
+      toast.error("Failed to load lists");
     } finally {
       set({ isLoadingLists: false });
     }
@@ -308,7 +428,12 @@ export const useStore = create<StoreState>()((set) => ({
       const result = await api.cards.getAll(boardId ? { boardId } : undefined);
       if (result.data) {
         set({ cards: result.data });
+      } else {
+        toast.error("Failed to load cards");
       }
+    } catch (error) {
+      console.error("Failed to load cards:", error);
+      toast.error("Failed to load cards");
     } finally {
       set({ isLoadingCards: false });
     }
@@ -320,7 +445,12 @@ export const useStore = create<StoreState>()((set) => ({
       const result = await api.subtasks.getAll(cardId);
       if (result.data) {
         set({ subtasks: result.data });
+      } else {
+        toast.error("Failed to load subtasks");
       }
+    } catch (error) {
+      console.error("Failed to load subtasks:", error);
+      toast.error("Failed to load subtasks");
     } finally {
       set({ isLoadingSubtasks: false });
     }
@@ -347,9 +477,12 @@ export const useStore = create<StoreState>()((set) => ({
           analytics: result.data,
           analyticsLastUpdated: new Date(),
         });
+      } else {
+        toast.error("Failed to load analytics");
       }
     } catch (error) {
-      console.error('Failed to load analytics:', error);
+      console.error("Failed to load analytics:", error);
+      toast.error("Failed to load analytics");
     } finally {
       set({ isLoadingAnalytics: false });
     }
@@ -364,9 +497,13 @@ export const useStore = create<StoreState>()((set) => ({
           analytics: result.data,
           analyticsLastUpdated: new Date(),
         });
+        toast.success("Analytics refreshed successfully");
+      } else {
+        toast.error("Failed to refresh analytics");
       }
     } catch (error) {
-      console.error('Failed to refresh analytics:', error);
+      console.error("Failed to refresh analytics:", error);
+      toast.error("Failed to refresh analytics");
     } finally {
       set({ isLoadingAnalytics: false });
     }

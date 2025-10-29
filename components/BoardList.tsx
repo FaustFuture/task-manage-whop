@@ -20,24 +20,24 @@ export function BoardList() {
 
   // Show all boards if no current user, otherwise filter by user's boards
   const userBoards = currentUser
-    ? boards.filter(board => board.members.includes(currentUser.id))
+    ? boards.filter(board => board.users.includes(currentUser.id))
     : boards;
 
   return (
-    <div className="p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
+    <div className="p-4 sm:p-6 md:p-8">
+      <div className="max-w-full mx-auto">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 md:mb-8">
           <h2 className="text-2xl font-bold text-white">Your Boards</h2>
           <button
             onClick={() => setIsAdding(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors cursor-pointer whitespace-nowrap"
           >
             <Plus size={20} />
             New Board
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))] gap-4 auto-rows-max">
           {isLoadingBoards ? (
             // Show skeleton loaders while loading
             <>
@@ -51,7 +51,7 @@ export function BoardList() {
               <button
                 key={board.id}
                 onClick={() => setSelectedBoard(board.id)}
-                className="group relative p-6 bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-xl border border-zinc-700 hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-500/10 transition-all text-left cursor-pointer overflow-hidden"
+                className="group relative p-6 bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-xl border border-zinc-700 hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-500/10 transition-all text-left cursor-pointer overflow-hidden h-full w-full"
               >
                 <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl group-hover:bg-emerald-500/10 transition-all" />
                 <div className="relative flex flex-col gap-4">
@@ -60,12 +60,9 @@ export function BoardList() {
                       <Folder className="text-emerald-500 group-hover:scale-110 transition-transform" size={24} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-white text-lg mb-1 truncate group-hover:text-emerald-400 transition-colors">
+                      <h3 className="font-bold text-white text-lg truncate group-hover:text-emerald-400 transition-colors">
                         {board.title}
                       </h3>
-                      <p className="text-sm text-zinc-400">
-                        {board.members.length} member{board.members.length !== 1 ? 's' : ''}
-                      </p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between pt-3 border-t border-zinc-700/50">
@@ -89,7 +86,7 @@ export function BoardList() {
           )}
 
           {isAdding && (
-            <div className="p-6 bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-xl border-2 border-emerald-500 shadow-lg shadow-emerald-500/20">
+            <div className="p-6 bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-xl border-2 border-emerald-500 shadow-lg shadow-emerald-500/20 h-full flex flex-col justify-center">
               <input
                 type="text"
                 value={newBoardTitle}

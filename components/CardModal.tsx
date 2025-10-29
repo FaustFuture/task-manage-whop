@@ -156,12 +156,10 @@ export function CardModal() {
 
             {totalCount > 0 && (
               <div className="mb-4">
-                <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-emerald-500 transition-all duration-300"
                     style={{ width: `${progress}%` }}
                   />
-                </div>
               </div>
             )}
 

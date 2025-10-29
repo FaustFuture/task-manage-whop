@@ -20,7 +20,7 @@ export function BoardSkeleton() {
 // List skeleton - matches List component structure
 export function ListSkeleton() {
   return (
-    <div className="flex-shrink-0 w-72 bg-zinc-800 rounded-lg p-4 flex flex-col animate-pulse">
+    <div className="w-full bg-zinc-800 rounded-lg p-4 flex flex-col animate-pulse h-fit">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="h-5 bg-zinc-700 rounded w-24" />
@@ -75,6 +75,80 @@ export function SubtaskSkeleton() {
 
       {/* Delete button placeholder */}
       <div className="w-4 h-4 bg-zinc-700 rounded" />
+    </div>
+  );
+}
+
+// Metric card skeleton - matches AdminDashboard summary metrics
+export function MetricCardSkeleton() {
+  return (
+    <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-4 animate-pulse">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-lg bg-zinc-800" />
+        <div className="flex-1">
+          <div className="h-7 bg-zinc-800 rounded w-12 mb-1" />
+          <div className="h-3 bg-zinc-800 rounded w-16" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// User card skeleton - matches AdminDashboard user cards
+export function UserCardSkeleton() {
+  return (
+    <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-6 animate-pulse">
+      {/* User Header */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-12 h-12 rounded-full bg-zinc-800" />
+        <div className="flex-1">
+          <div className="h-5 bg-zinc-800 rounded w-32 mb-2" />
+          <div className="h-4 bg-zinc-800 rounded w-40" />
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="space-y-3">
+        {/* Boards */}
+        <div className="flex items-center justify-between">
+          <div className="h-4 bg-zinc-800 rounded w-16" />
+          <div className="h-4 bg-zinc-800 rounded w-8" />
+        </div>
+
+        {/* Total Tasks */}
+        <div className="flex items-center justify-between">
+          <div className="h-4 bg-zinc-800 rounded w-20" />
+          <div className="h-4 bg-zinc-800 rounded w-8" />
+        </div>
+
+        {/* Status Breakdown */}
+        <div className="grid grid-cols-3 gap-2 pt-2">
+          <div className="bg-zinc-800 rounded p-2">
+            <div className="h-4 bg-zinc-700 rounded w-4 mx-auto mb-1" />
+            <div className="h-5 bg-zinc-700 rounded w-6 mx-auto mb-1" />
+            <div className="h-3 bg-zinc-700 rounded w-16 mx-auto" />
+          </div>
+          <div className="bg-zinc-800 rounded p-2">
+            <div className="h-4 bg-zinc-700 rounded w-4 mx-auto mb-1" />
+            <div className="h-5 bg-zinc-700 rounded w-6 mx-auto mb-1" />
+            <div className="h-3 bg-zinc-700 rounded w-16 mx-auto" />
+          </div>
+          <div className="bg-zinc-800 rounded p-2">
+            <div className="h-4 bg-zinc-700 rounded w-4 mx-auto mb-1" />
+            <div className="h-5 bg-zinc-700 rounded w-6 mx-auto mb-1" />
+            <div className="h-3 bg-zinc-700 rounded w-16 mx-auto" />
+          </div>
+        </div>
+
+        {/* Completion Progress */}
+        <div className="pt-2">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="h-4 bg-zinc-800 rounded w-20" />
+            <div className="h-4 bg-zinc-800 rounded w-10" />
+          </div>
+          <div className="h-2 bg-zinc-800 rounded-full" />
+        </div>
+      </div>
     </div>
   );
 }

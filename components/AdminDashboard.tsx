@@ -1,58 +1,50 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
-import { OverviewMetrics } from './admin/OverviewMetrics';
-import { UserMetricsTable } from './admin/UserMetricsTable';
-import { BoardAnalyticsSection } from './admin/BoardAnalytics';
-import { ActivityFeed } from './admin/ActivityFeed';
-import { TrendChart } from './admin/TrendChart';
 import { UserDetailModal } from './admin/UserDetailModal';
-import {
-  generateExtendedUserData,
-  generateActivityFeed,
-  generateDailyTrend,
-  generateCompletionTrend,
-} from '@/lib/mockData';
-import { RefreshCw, Download, Calendar, TrendingUp, Activity as ActivityIcon } from 'lucide-react';
+import { generateExtendedUserData, seedMockData } from '@/lib/mockData';
+import { Users, CheckCircle, Clock, XCircle, Sparkles, Folder, ListTodo, TrendingUp } from 'lucide-react';
+import { useToast } from '@/contexts/ToastContext';
+import { MetricCardSkeleton, UserCardSkeleton } from './Skeletons';
 
 export function AdminDashboard() {
   const {
-    analytics,
-    isLoadingAnalytics,
-    loadAnalytics,
-    refreshAnalytics,
     users,
     boards,
     cards,
     lists,
+    loadBoards,
+    loadLists,
+    loadCards,
+    isLoadingBoards,
+    isLoadingCards,
+    setSelectedBoard,
+    openCardModal,
+    setViewMode,
   } = useStore();
 
-  const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d'>('30d');
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { success, error } = useToast();
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [isSeeding, setIsSeeding] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
-  // Load analytics on mount
+  // Track when initial loading completes - set immediately when loading finishes
   useEffect(() => {
-    loadAnalytics();
-  }, [loadAnalytics]);
+    if (!isLoadingBoards && !isLoadingCards) {
+      // Use a small delay to ensure state updates are complete
+      const timer = setTimeout(() => {
+        setInitialLoadComplete(true);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoadingBoards, isLoadingCards]);
+
+  // Show loader ONLY before initial load completes (never show again after first load)
+  const isLoading = !initialLoadComplete;
 
   // Generate mock data based on real data
   const extendedUserData = useMemo(() => generateExtendedUserData(users), [users]);
-  const activityFeed = useMemo(
-    () => generateActivityFeed(users, cards, boards, 50),
-    [users, cards, boards]
-  );
-
-  const taskCreationTrend = useMemo(
-    () => generateDailyTrend(dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90),
-    [dateRange]
-  );
-
-  const completionTrend = useMemo(
-    () => generateCompletionTrend(dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90),
-    [dateRange]
-  );
 
   // Get selected user
   const selectedUser = useMemo(
@@ -60,260 +52,306 @@ export function AdminDashboard() {
     [users, selectedUserId]
   );
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await refreshAnalytics();
-    setTimeout(() => setIsRefreshing(false), 500);
+  // Calculate overall metrics
+  const overallMetrics = useMemo(() => {
+    const totalTasks = cards.length;
+    const notStarted = cards.filter(c => c.status === 'not_started').length;
+    const inProgress = cards.filter(c => c.status === 'in_progress').length;
+    const done = cards.filter(c => c.status === 'done').length;
+    const completionRate = totalTasks > 0 ? Math.round((done / totalTasks) * 100) : 0;
+
+    return {
+      totalUsers: users.length,
+      totalBoards: boards.length,
+      totalTasks,
+      notStarted,
+      inProgress,
+      done,
+      completionRate,
+    };
+  }, [users, boards, cards]);
+
+  // Calculate user task stats
+  const userStats = useMemo(() => {
+    return users.map(user => {
+      const userCards = cards.filter(card => card.assignedTo.includes(user.id));
+      const userBoards = boards.filter(board => board.users.includes(user.id));
+
+      const notStarted = userCards.filter(c => c.status === 'not_started').length;
+      const inProgress = userCards.filter(c => c.status === 'in_progress').length;
+      const done = userCards.filter(c => c.status === 'done').length;
+      const total = userCards.length;
+      const completionRate = total > 0 ? Math.round((done / total) * 100) : 0;
+
+      return {
+        user,
+        boardCount: userBoards.length,
+        total,
+        notStarted,
+        inProgress,
+        done,
+        completionRate,
+      };
+    });
+  }, [users, cards, boards]);
+
+  // Handle card click from user modal
+  const handleCardClick = (cardId: string, boardId: string) => {
+    // Close user modal
+    setSelectedUserId(null);
+
+    // Switch to member view
+    setViewMode('member');
+
+    // Select the board
+    setSelectedBoard(boardId);
+
+    // Open the card modal (with a small delay to ensure board loads)
+    setTimeout(() => {
+      openCardModal(cardId);
+    }, 100);
   };
 
-  const handleExport = () => {
-    if (!analytics) return;
+  // Handle seed mock data
+  const handleSeedMockData = async () => {
+    if (users.length === 0) {
+      error('Please create users first before seeding mock data');
+      return;
+    }
 
-    const csvContent = [
-      ['Metric', 'Value'],
-      ['Total Users', analytics.overview.totalUsers],
-      ['Active Users', analytics.overview.activeUsers],
-      ['Total Boards', analytics.overview.totalBoards],
-      ['Total Tasks', analytics.overview.totalTasks],
-      ['Completion Rate', `${analytics.overview.completionRate}%`],
-      ['Tasks Not Started', analytics.overview.notStarted],
-      ['Tasks In Progress', analytics.overview.inProgress],
-      ['Tasks Done', analytics.overview.done],
-    ]
-      .map((row) => row.join(','))
-      .join('\n');
+    setIsSeeding(true);
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `admin-dashboard-${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+    try {
+      const result = await seedMockData(users);
+
+      if (result.success) {
+        success(result.message);
+
+        // Reload data
+        await loadBoards();
+        await loadLists();
+        await loadCards();
+      } else {
+        error(result.message);
+      }
+    } catch (err) {
+      console.error('Failed to seed mock data:', err);
+      error('Failed to seed mock data');
+    } finally {
+      setIsSeeding(false);
+    }
   };
-
-  if (isLoadingAnalytics || !analytics) {
-    return (
-      <div className="p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-96">
-            <div className="text-center">
-              <RefreshCw className="w-8 h-8 text-emerald-500 animate-spin mx-auto mb-4" />
-              <p className="text-zinc-400">Loading analytics...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="p-8">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-3xl font-bold text-white mb-2">Admin Dashboard</h2>
+            <h2 className="text-3xl font-bold text-white mb-2">Team Overview</h2>
             <p className="text-zinc-400">
-              Comprehensive analytics and team monitoring
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            {/* Date Range Selector */}
-            <div className="flex items-center gap-2 bg-zinc-800 border border-zinc-700 rounded-lg p-1">
-              {(['7d', '30d', '90d'] as const).map((range) => (
-                <button
-                  key={range}
-                  onClick={() => setDateRange(range)}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    dateRange === range
-                      ? 'bg-emerald-500 text-white'
-                      : 'text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  {range === '7d' ? '7 Days' : range === '30d' ? '30 Days' : '90 Days'}
-                </button>
-              ))}
-            </div>
-
-            {/* Export Button */}
-            <button
-              onClick={handleExport}
-              className="flex items-center gap-2 px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white hover:bg-zinc-700 transition-colors"
-            >
-              <Download size={18} />
-              <span className="text-sm font-medium">Export</span>
-            </button>
-
-            {/* Refresh Button */}
-            <button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white transition-colors disabled:opacity-50"
-            >
-              <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
-              <span className="text-sm font-medium">Refresh</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Overview Metrics */}
-        <OverviewMetrics overview={analytics.overview} />
-
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Task Creation Trend */}
-          <div className="bg-zinc-800 rounded-lg border border-zinc-700 p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="text-emerald-500" size={20} />
-              <h3 className="text-lg font-semibold text-white">Task Creation Trend</h3>
-            </div>
-            <TrendChart
-              data={taskCreationTrend}
-              height={250}
-              color="#10b981"
-              showDots={true}
-              showGrid={true}
-            />
-            <p className="text-xs text-zinc-500 mt-4">
-              Mock data showing task creation pattern over time
+              Monitor user activity, boards, and task progress
             </p>
           </div>
 
-          {/* Completion Rate Trend */}
-          <div className="bg-zinc-800 rounded-lg border border-zinc-700 p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="text-cyan-500" size={20} />
-              <h3 className="text-lg font-semibold text-white">Completion Rate Trend</h3>
-            </div>
-            <TrendChart
-              data={completionTrend}
-              height={250}
-              color="#06b6d4"
-              showDots={true}
-              showGrid={true}
-            />
-            <p className="text-xs text-zinc-500 mt-4">
-              Mock data showing completion rate changes over time
-            </p>
-          </div>
+          {/* Seed Mock Data Button */}
+          <button
+            onClick={handleSeedMockData}
+            disabled={isSeeding || users.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 rounded-lg text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Sparkles size={18} className={isSeeding ? 'animate-spin' : ''} />
+            <span className="text-sm font-medium">
+              {isSeeding ? 'Generating...' : 'Generate Mock Data'}
+            </span>
+          </button>
         </div>
 
-        {/* Board Analytics */}
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <Calendar className="text-indigo-500" size={20} />
-            <h3 className="text-xl font-semibold text-white">Board Analytics</h3>
-          </div>
-          <BoardAnalyticsSection
-            boardStats={analytics.boardStats.mostActive}
-            healthDistribution={analytics.boardStats.healthDistribution}
-          />
+        {/* Summary Metrics */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {isLoading ? (
+            <>
+              <MetricCardSkeleton />
+              <MetricCardSkeleton />
+              <MetricCardSkeleton />
+              <MetricCardSkeleton />
+              <MetricCardSkeleton />
+              <MetricCardSkeleton />
+            </>
+          ) : (
+            <>
+              {/* Total Users */}
+              <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center">
+                    <Users className="w-5 h-5 text-zinc-400" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-white">{overallMetrics.totalUsers}</div>
+                    <div className="text-xs text-zinc-500">Users</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Total Boards */}
+              <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center">
+                    <Folder className="w-5 h-5 text-zinc-400" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-white">{overallMetrics.totalBoards}</div>
+                    <div className="text-xs text-zinc-500">Boards</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Total Tasks */}
+              <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center">
+                    <ListTodo className="w-5 h-5 text-zinc-400" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-white">{overallMetrics.totalTasks}</div>
+                    <div className="text-xs text-zinc-500">Total Tasks</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* In Progress */}
+              <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-zinc-400" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-white">{overallMetrics.inProgress}</div>
+                    <div className="text-xs text-zinc-500">In Progress</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Done */}
+              <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5 text-zinc-400" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-white">{overallMetrics.done}</div>
+                    <div className="text-xs text-zinc-500">Completed</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Completion Rate */}
+              <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center">
+                    <TrendingUp className="w-5 h-5 text-zinc-400" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-white">{overallMetrics.completionRate}%</div>
+                    <div className="text-xs text-zinc-500">Completion</div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Team Performance Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Top Performers */}
-          <div className="bg-gradient-to-br from-emerald-900/20 to-zinc-800 rounded-lg border border-emerald-700/30 p-6">
-            <h3 className="text-lg font-semibold text-emerald-400 mb-4">Top Performers</h3>
-            {analytics.userMetrics.topPerformers.length > 0 ? (
-              <div className="space-y-3">
-                {analytics.userMetrics.topPerformers.map((user, index) => (
-                  <div key={user.userId} className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                      {index + 1}
+        {/* Users Grid */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <UserCardSkeleton />
+            <UserCardSkeleton />
+            <UserCardSkeleton />
+          </div>
+        ) : users.length === 0 ? (
+          <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-12 text-center">
+            <Users className="w-16 h-16 text-zinc-600 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-white mb-2">No Users Yet</h3>
+            <p className="text-zinc-400">Add users to start monitoring their activity</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {userStats.map(({ user, boardCount, total, notStarted, inProgress, done, completionRate }) => (
+              <button
+                key={user.id}
+                onClick={() => setSelectedUserId(user.id)}
+                className="bg-zinc-900 border border-zinc-700 rounded-lg p-6 hover:border-emerald-500/50 hover:bg-zinc-800/50 transition-all text-left group cursor-pointer"
+              >
+                {/* User Header */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center text-white text-lg font-bold flex-shrink-0">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-white font-semibold truncate group-hover:text-emerald-400 transition-colors">
+                      {user.name}
+                    </h3>
+                    <p className="text-sm text-zinc-500 truncate">{user.email}</p>
+                  </div>
+                </div>
+
+                {/* Stats */}
+                <div className="space-y-3">
+                  {/* Boards */}
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-zinc-400">Boards</span>
+                    <span className="text-white font-medium">{boardCount}</span>
+                  </div>
+
+                  {/* Total Tasks */}
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-zinc-400">Total Tasks</span>
+                    <span className="text-white font-medium">{total}</span>
+                  </div>
+
+                  {/* Status Breakdown */}
+                  <div className="grid grid-cols-3 gap-2 pt-2">
+                    <div className="bg-zinc-800 rounded p-2 text-center">
+                      <div className="flex items-center justify-center mb-1">
+                        <XCircle className="w-4 h-4 text-zinc-500" />
+                      </div>
+                      <div className="text-lg font-bold text-zinc-400">{notStarted}</div>
+                      <div className="text-xs text-zinc-600">Not Started</div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white font-medium truncate">{user.name}</p>
-                      <p className="text-xs text-zinc-500">
-                        {user.totalTasks} tasks • {user.completionRate}% complete
-                      </p>
+                    <div className="bg-blue-500/10 rounded p-2 text-center">
+                      <div className="flex items-center justify-center mb-1">
+                        <Clock className="w-4 h-4 text-blue-500" />
+                      </div>
+                      <div className="text-lg font-bold text-blue-400">{inProgress}</div>
+                      <div className="text-xs text-blue-600">In Progress</div>
+                    </div>
+                    <div className="bg-emerald-500/10 rounded p-2 text-center">
+                      <div className="flex items-center justify-center mb-1">
+                        <CheckCircle className="w-4 h-4 text-emerald-500" />
+                      </div>
+                      <div className="text-lg font-bold text-emerald-400">{done}</div>
+                      <div className="text-xs text-emerald-600">Done</div>
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-zinc-500 text-sm">Not enough data yet</p>
-            )}
-          </div>
 
-          {/* Users Needing Support */}
-          <div className="bg-gradient-to-br from-amber-900/20 to-zinc-800 rounded-lg border border-amber-700/30 p-6">
-            <h3 className="text-lg font-semibold text-amber-400 mb-4">Needs Support</h3>
-            {analytics.userMetrics.needingSupport.length > 0 ? (
-              <div className="space-y-3">
-                {analytics.userMetrics.needingSupport.map((user, index) => (
-                  <div key={user.userId} className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-red-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                      {index + 1}
+                  {/* Completion Progress */}
+                  <div className="pt-2">
+                    <div className="flex items-center justify-between text-sm mb-1.5">
+                      <span className="text-zinc-400">Completion</span>
+                      <span className="text-white font-medium">{completionRate}%</span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white font-medium truncate">{user.name}</p>
-                      <p className="text-xs text-zinc-500">
-                        {user.totalTasks} tasks • {user.completionRate}% complete
-                      </p>
+                    <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-emerald-500 to-cyan-500 transition-all duration-500"
+                        style={{ width: `${completionRate}%` }}
+                      />
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-zinc-500 text-sm">All users performing well</p>
-            )}
+                </div>
+              </button>
+            ))}
           </div>
-
-          {/* Collaboration Index */}
-          <div className="bg-gradient-to-br from-indigo-900/20 to-zinc-800 rounded-lg border border-indigo-700/30 p-6">
-            <h3 className="text-lg font-semibold text-indigo-400 mb-4">Most Collaborative</h3>
-            {analytics.userMetrics.all.length > 0 ? (
-              <div className="space-y-3">
-                {[...analytics.userMetrics.all]
-                  .sort((a, b) => b.boardsCount - a.boardsCount)
-                  .slice(0, 5)
-                  .map((user, index) => (
-                    <div key={user.userId} className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                        {index + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white font-medium truncate">{user.name}</p>
-                        <p className="text-xs text-zinc-500">
-                          Active on {user.boardsCount} board{user.boardsCount !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            ) : (
-              <p className="text-zinc-500 text-sm">No collaboration data yet</p>
-            )}
-          </div>
-        </div>
-
-        {/* User Performance Table and Activity Feed */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* User Performance Table - Takes 2 columns */}
-          <div className="lg:col-span-2">
-            <UserMetricsTable
-              userMetrics={analytics.userMetrics.all}
-              extendedData={extendedUserData}
-              onUserClick={(userId) => setSelectedUserId(userId)}
-            />
-          </div>
-
-          {/* Activity Feed - Takes 1 column */}
-          <div>
-            <ActivityFeed activities={activityFeed} maxItems={15} />
-          </div>
-        </div>
-
-        {/* Footer Note */}
-        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4 text-center">
-          <p className="text-sm text-zinc-500">
-            <span className="text-zinc-400 font-medium">Note:</span> Activity feed, trends, and extended user data (department, location, join dates) are mock data for demonstration purposes.
-          </p>
-        </div>
+        )}
       </div>
 
       {/* User Detail Modal */}
@@ -325,6 +363,7 @@ export function AdminDashboard() {
           cards={cards}
           lists={lists}
           onClose={() => setSelectedUserId(null)}
+          onCardClick={handleCardClick}
         />
       )}
     </div>

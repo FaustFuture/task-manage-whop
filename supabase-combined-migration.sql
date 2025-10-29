@@ -23,8 +23,8 @@ CREATE TABLE boards (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Board members junction table
-CREATE TABLE board_members (
+-- Board users junction table
+CREATE TABLE board_users (
   board_id UUID NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   PRIMARY KEY (board_id, user_id)
@@ -70,8 +70,8 @@ CREATE TABLE subtasks (
 
 -- Indexes for better query performance
 CREATE INDEX idx_boards_created_by ON boards(created_by);
-CREATE INDEX idx_board_members_board_id ON board_members(board_id);
-CREATE INDEX idx_board_members_user_id ON board_members(user_id);
+CREATE INDEX idx_board_users_board_id ON board_users(board_id);
+CREATE INDEX idx_board_users_user_id ON board_users(user_id);
 CREATE INDEX idx_lists_board_id ON lists(board_id);
 CREATE INDEX idx_cards_list_id ON cards(list_id);
 CREATE INDEX idx_cards_created_by ON cards(created_by);
@@ -82,3 +82,20 @@ CREATE INDEX idx_subtasks_card_id ON subtasks(card_id);
 
 -- Row Level Security is disabled for development without auth
 -- If you need to enable RLS in the future, you can do so with appropriate policies
+
+-- ============================================================================
+-- MIGRATION: Rename board_members to board_users (for existing databases)
+-- ============================================================================
+-- If you already have data in your database with the old 'board_members' table,
+-- run the following commands to migrate to the new 'board_users' naming:
+
+-- Rename the table
+-- ALTER TABLE board_members RENAME TO board_users;
+
+-- Rename the indexes
+-- DROP INDEX IF EXISTS idx_board_members_board_id;
+-- DROP INDEX IF EXISTS idx_board_members_user_id;
+-- CREATE INDEX idx_board_users_board_id ON board_users(board_id);
+-- CREATE INDEX idx_board_users_user_id ON board_users(user_id);
+
+-- Note: The column names (board_id, user_id) remain the same as they are already correct

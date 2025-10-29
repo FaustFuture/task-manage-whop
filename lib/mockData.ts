@@ -1,6 +1,7 @@
 // Mock data utilities for admin dashboard analytics
 
-import { User, Card, Board } from '@/types';
+import { User, Card, Board, TaskStatus } from '@/types';
+import { api } from './api';
 
 // Departments and locations for mock data
 const departments = ['Engineering', 'Design', 'Marketing', 'Sales', 'Operations', 'Product'];
@@ -331,4 +332,186 @@ export function generateSparklineData(points: number = 7): number[] {
   }
 
   return data;
+}
+
+// ===== MOCK DATA GENERATION FOR BOARDS, LISTS, AND CARDS =====
+
+// Board templates
+const boardTemplates = [
+  { title: 'Q1 2025 Goals', lists: ['Backlog', 'In Progress', 'Review', 'Completed'] },
+  { title: 'Marketing Campaign', lists: ['Ideas', 'Planning', 'Execution', 'Done'] },
+  { title: 'Product Development', lists: ['Backlog', 'Design', 'Development', 'Testing', 'Shipped'] },
+  { title: 'Customer Support', lists: ['New', 'Investigating', 'Resolved', 'Closed'] },
+  { title: 'Website Redesign', lists: ['Research', 'Wireframes', 'Design', 'Development', 'Launch'] },
+  { title: 'Team Operations', lists: ['To Do', 'Doing', 'Done'] },
+  { title: 'Sales Pipeline', lists: ['Leads', 'Qualified', 'Proposal', 'Negotiation', 'Closed'] },
+  { title: 'Event Planning', lists: ['Ideas', 'Planning', 'Preparation', 'Execution', 'Wrap-up'] },
+];
+
+// Task templates by category
+const taskTemplates = {
+  engineering: [
+    'Fix authentication bug',
+    'Implement user dashboard',
+    'Optimize database queries',
+    'Add real-time notifications',
+    'Refactor API endpoints',
+    'Setup CI/CD pipeline',
+    'Write unit tests',
+    'Update documentation',
+    'Code review PR #123',
+    'Deploy to production',
+  ],
+  design: [
+    'Create wireframes for landing page',
+    'Design mobile app mockups',
+    'Update brand guidelines',
+    'Create icon set',
+    'User research interviews',
+    'Prototype interaction flows',
+    'Design system updates',
+    'Accessibility audit',
+  ],
+  marketing: [
+    'Write blog post',
+    'Create social media campaign',
+    'Plan webinar',
+    'Design email newsletter',
+    'SEO optimization',
+    'Competitor analysis',
+    'Update website copy',
+    'Create case study',
+  ],
+  general: [
+    'Team meeting',
+    'Review quarterly goals',
+    'Update project timeline',
+    'Prepare presentation',
+    'Client feedback review',
+    'Budget planning',
+    'Onboard new team member',
+    'Research new tools',
+  ],
+};
+
+// Get random items from array
+function getRandomItems<T>(array: T[], count: number): T[] {
+  const shuffled = [...array].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, Math.min(count, array.length));
+}
+
+// Get random task title
+function getRandomTaskTitle(): string {
+  const categories = Object.values(taskTemplates);
+  const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+  return randomCategory[Math.floor(Math.random() * randomCategory.length)];
+}
+
+// Get random status with realistic distribution
+function getRandomStatus(): TaskStatus {
+  const rand = Math.random();
+  if (rand < 0.25) return 'not_started';
+  if (rand < 0.6) return 'in_progress';
+  return 'done';
+}
+
+// Seed mock data into database
+export async function seedMockData(users: User[]): Promise<{
+  success: boolean;
+  message: string;
+  data?: {
+    boardsCreated: number;
+    listsCreated: number;
+    cardsCreated: number;
+  };
+}> {
+  if (users.length === 0) {
+    return {
+      success: false,
+      message: 'No users found. Please create users first.',
+    };
+  }
+
+  try {
+    let boardsCreated = 0;
+    let listsCreated = 0;
+    let cardsCreated = 0;
+
+    // Create 3-5 boards
+    const numBoards = Math.floor(Math.random() * 3) + 3; // 3-5 boards
+    const selectedTemplates = getRandomItems(boardTemplates, numBoards);
+
+    for (const template of selectedTemplates) {
+      // Select random users for this board
+      const boardMembers = getRandomItems(users, Math.floor(Math.random() * users.length) + 1);
+      const boardMemberIds = boardMembers.map(u => u.id);
+
+      // Create board
+      const boardResult = await api.boards.create({
+        title: template.title,
+        createdBy: null, // No authentication, as per CLAUDE.md
+        users: boardMemberIds,
+      });
+
+      if (!boardResult.data) continue;
+
+      const board = boardResult.data;
+      boardsCreated++;
+
+      // Create lists for this board
+      for (let i = 0; i < template.lists.length; i++) {
+        const listResult = await api.lists.create({
+          boardId: board.id,
+          title: template.lists[i],
+          order: i,
+        });
+
+        if (!listResult.data) continue;
+
+        const list = listResult.data;
+        listsCreated++;
+
+        // Create 2-5 cards per list
+        const numCards = Math.floor(Math.random() * 4) + 2; // 2-5 cards
+
+        for (let j = 0; j < numCards; j++) {
+          // Assign to 1-3 random users who are users of this board
+          const assignedUsers = getRandomItems(
+            users.filter(u => board.users.includes(u.id)),
+            Math.floor(Math.random() * 3) + 1
+          );
+
+          const cardResult = await api.cards.create({
+            listId: list.id,
+            title: getRandomTaskTitle(),
+            description: Math.random() > 0.5 ? 'Task description goes here...' : '',
+            status: getRandomStatus(),
+            assignedTo: assignedUsers.map(u => u.id),
+            createdBy: null, // No authentication, as per CLAUDE.md
+            order: j,
+          } as any); // Type assertion needed as status not in API type definition
+
+          if (cardResult.data) {
+            cardsCreated++;
+          }
+        }
+      }
+    }
+
+    return {
+      success: true,
+      message: `Successfully created ${boardsCreated} boards, ${listsCreated} lists, and ${cardsCreated} cards`,
+      data: {
+        boardsCreated,
+        listsCreated,
+        cardsCreated,
+      },
+    };
+  } catch (error) {
+    console.error('Error seeding mock data:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
+  }
 }

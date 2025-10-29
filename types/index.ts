@@ -17,7 +17,7 @@ export interface Board {
   id: string;
   title: string;
   createdBy: string | null;
-  members: string[];
+  users: string[];
   createdAt: Date;
   taskCount: number;
 }
