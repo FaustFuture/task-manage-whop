@@ -48,7 +48,7 @@ interface CardItemProps {
 export function CardItem({ card }: CardItemProps) {
   const { openCardModal, updateCard, subtasks } = useStore();
   const [showDropdown, setShowDropdown] = useState(false);
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const {
@@ -72,7 +72,7 @@ export function CardItem({ card }: CardItemProps) {
       const rect = buttonRef.current.getBoundingClientRect();
       setDropdownPosition({
         top: rect.bottom + 4,
-        right: window.innerWidth - rect.right,
+        left: rect.left,
       });
     }
   }, [showDropdown]);
@@ -142,7 +142,7 @@ export function CardItem({ card }: CardItemProps) {
           {/* Dropdown */}
           <div
             className="fixed w-36 bg-zinc-800 rounded-lg border border-zinc-700 shadow-xl z-[9999] overflow-hidden"
-            style={{ top: `${dropdownPosition.top}px`, right: `${dropdownPosition.right}px` }}
+            style={{ top: `${dropdownPosition.top}px`, left: `${dropdownPosition.left}px` }}
           >
             {availableStatuses.map((status) => (
               <button

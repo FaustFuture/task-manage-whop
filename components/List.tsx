@@ -82,7 +82,7 @@ export function BoardList({ list, activeCardId, overCardId }: BoardListProps) {
 
       <div
         ref={setNodeRef}
-        className="max-h-[600px] overflow-y-auto mb-4 flex-1 scrollbar-hide"
+        className="max-h-[600px] overflow-y-auto flex-1 scrollbar-hide"
       >
         <div className="space-y-2">
           <SortableContext items={listCards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
