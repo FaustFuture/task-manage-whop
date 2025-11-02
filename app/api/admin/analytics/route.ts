@@ -14,19 +14,29 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch all necessary data filtered by companyId
-    const [boardsRes, cardsRes, listsRes] = await Promise.all([
+    const [boardsRes, cardsRes, listsRes, whopUsersRes] = await Promise.all([
       supabase.from('boards').select('*').eq('company_id', companyId),
       supabase.from('cards').select('*'),
       supabase.from('lists').select('*'),
+      supabase.from('whop_users').select('*').eq('company_id', companyId),
     ]);
 
     if (boardsRes.error) throw boardsRes.error;
     if (cardsRes.error) throw cardsRes.error;
     if (listsRes.error) throw listsRes.error;
+    if (whopUsersRes.error) {
+      console.warn('[ANALYTICS] Could not fetch whop_users cache:', whopUsersRes.error);
+    }
 
     const boards = boardsRes.data || [];
     const allCards = cardsRes.data || [];
     const allLists = listsRes.data || [];
+    const whopUsers = whopUsersRes.data || [];
+
+    // Create a map of userId -> user data for quick lookup
+    const whopUsersMap = new Map(
+      whopUsers.map(u => [u.id, { name: u.name, username: u.username, avatar: u.avatar }])
+    );
 
     // Filter lists to only those in company's boards
     const boardIds = boards.map(b => b.id);
@@ -115,10 +125,13 @@ export async function GET(request: NextRequest) {
           .eq('user_id', userId)
           .in('board_id', boardIds);
 
+        // Get user data from whop_users cache, fallback to userId if not found
+        const whopUserData = whopUsersMap.get(userId);
+
         return {
           userId: userId,
-          name: userId, // We don't have Whop user names here, show userId
-          username: userId, // Will be displayed as username
+          name: whopUserData?.name || userId, // Use real name from cache
+          username: whopUserData?.username || userId, // Use username from cache
           role: 'member' as const, // Default role, actual role comes from Whop
           totalTasks: userTotal,
           notStarted: userNotStarted,

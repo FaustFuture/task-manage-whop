@@ -33,6 +33,33 @@ export default function Home({ access, userId, username, name, companyId }: Home
       // Map Whop access level to our role system
       const role = access === 'admin' ? 'admin' : 'member';
 
+      // Upsert user data to Whop users cache for admin dashboard
+      const upsertUserCache = async () => {
+        try {
+          console.log('[DASHBOARD] Upserting Whop user to cache:', { userId, username, companyId });
+          const response = await fetch('/api/whop-users/upsert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: userId,
+              username,
+              name: name || null,
+              company_id: companyId,
+            }),
+          });
+
+          if (!response.ok) {
+            console.error('[DASHBOARD] Failed to upsert user cache:', await response.text());
+          } else {
+            console.log('[DASHBOARD] User cache upserted successfully');
+          }
+        } catch (error) {
+          console.error('[DASHBOARD] Error upserting user cache:', error);
+        }
+      };
+
+      upsertUserCache();
+
       setCurrentUser({
         id: userId,
         name: name || null,
