@@ -117,13 +117,13 @@ export function UserDetailModal({ user, extendedData, boards, cards, lists, onCl
             <div className="flex items-center gap-4">
               {/* User Avatar */}
               <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center text-white text-2xl font-bold">
-                {user.name.charAt(0).toUpperCase()}
+                {user.name ? user.name.charAt(0).toUpperCase() : "@"}
               </div>
 
               {/* User Info */}
               <div>
                 <h2 className="text-2xl font-bold text-white">{user.name}</h2>
-                <p className="text-zinc-400">{user.email}</p>
+                {/* <p className="text-zinc-400">{user.email}</p> */}
                 {extendedData && (
                   <div className="flex gap-3 mt-2 text-sm">
                     <span className="px-2 py-1 bg-zinc-800 rounded text-zinc-400">

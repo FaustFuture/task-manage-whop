@@ -22,7 +22,6 @@ export function AdminDashboard() {
     isLoadingAnalytics,
     loadAnalytics,
     refreshAnalytics,
-    users,
     boards,
     cards,
     lists,
@@ -36,6 +35,17 @@ export function AdminDashboard() {
   useEffect(() => {
     loadAnalytics();
   }, [loadAnalytics]);
+
+  // Get users from analytics (which are derived from Whop user IDs in card assignments)
+  const users = useMemo(() => {
+    if (!analytics) return [];
+    return analytics.userMetrics.all.map(metric => ({
+      id: metric.userId,
+      name: metric.name,
+      username: metric.username,
+      role: metric.role,
+    }));
+  }, [analytics]);
 
   // Generate mock data based on real data
   const extendedUserData = useMemo(() => generateExtendedUserData(users), [users]);
@@ -54,7 +64,7 @@ export function AdminDashboard() {
     [dateRange]
   );
 
-  // Get selected user
+  // Get selected user from analytics
   const selectedUser = useMemo(
     () => users.find(u => u.id === selectedUserId),
     [users, selectedUserId]

@@ -24,8 +24,7 @@ export function UserMetricsTable({ userMetrics, extendedData, onUserClick }: Use
   const filteredAndSortedData = useMemo(() => {
     let filtered = userMetrics.filter(
       (user) =>
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase())
+        user.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     // Sort
@@ -175,7 +174,6 @@ export function UserMetricsTable({ userMetrics, extendedData, onUserClick }: Use
                       </div>
                       <div>
                         <div className="text-white font-medium">{user.name}</div>
-                        <div className="text-sm text-zinc-500">{user.email}</div>
                         {extended && (
                           <div className="text-xs text-zinc-600 mt-0.5">
                             {extended.department} • {extended.location}
