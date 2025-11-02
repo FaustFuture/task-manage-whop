@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useStore } from '@/store/useStore';
 import { OverviewMetrics } from './admin/OverviewMetrics';
 import { UserMetricsTable } from './admin/UserMetricsTable';
+import { BoardsTable } from './admin/BoardsTable';
 import { BoardAnalyticsSection } from './admin/BoardAnalytics';
 import { ActivityFeed } from './admin/ActivityFeed';
 import { TrendChart } from './admin/TrendChart';
@@ -302,7 +303,7 @@ export function AdminDashboard() {
         {/* User Performance Table and Activity Feed */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* User Performance Table - Takes 2 columns */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-3">
             <UserMetricsTable
               userMetrics={analytics.userMetrics.all}
               extendedData={extendedUserData}
@@ -311,9 +312,23 @@ export function AdminDashboard() {
           </div>
 
           {/* Activity Feed - Takes 1 column */}
-          <div>
+          {/* <div>
             <ActivityFeed activities={activityFeed} maxItems={15} />
+          </div> */}
+        </div>
+
+        {/* Boards Section */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <h3 className="text-xl font-semibold text-white">Boards</h3>
           </div>
+          <BoardsTable
+            boards={analytics.boardStats.all.map((board) => ({
+              ...board,
+              membersCount: boards.find((b) => b.id === board.id)?.members.length || 0,
+              createdAt: boards.find((b) => b.id === board.id)?.createdAt || new Date(),
+            }))}
+          />
         </div>
 
         {/* Footer Note */}

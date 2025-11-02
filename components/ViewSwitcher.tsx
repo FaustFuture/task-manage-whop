@@ -1,6 +1,6 @@
 'use client';
 
-import { LayoutGrid, User } from 'lucide-react';
+import { LayoutGrid, User, Kanban } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 
 export function ViewSwitcher() {
@@ -33,6 +33,19 @@ export function ViewSwitcher() {
       >
         <User size={18} />
         Member View
+      </button>
+      <button
+        onClick={() => setViewMode('boards')}
+        className={`
+          flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium transition-all cursor-pointer
+          ${viewMode === 'boards'
+            ? 'bg-emerald-500 text-white'
+            : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+          }
+        `}
+      >
+        <Kanban size={18} />
+        Boards
       </button>
     </div>
   );

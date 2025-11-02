@@ -16,7 +16,12 @@ export async function GET(request: NextRequest) {
     // Fetch all necessary data filtered by companyId
     const [boardsRes, cardsRes, listsRes, whopUsersRes] = await Promise.all([
       supabase.from('boards').select('*').eq('company_id', companyId),
-      supabase.from('cards').select('*'),
+      supabase.from('cards').select(`
+        *,
+        card_assignees (
+          user_id
+        )
+      `),
       supabase.from('lists').select('*'),
       supabase.from('whop_users').select('*').eq('company_id', companyId),
     ]);
@@ -33,6 +38,12 @@ export async function GET(request: NextRequest) {
     const allLists = listsRes.data || [];
     const whopUsers = whopUsersRes.data || [];
 
+    // Transform cards to include assigned_to field from card_assignees junction table
+    const transformedCards = allCards.map((card: any) => ({
+      ...card,
+      assigned_to: card.card_assignees?.map((ca: any) => ca.user_id) || []
+    }));
+
     // Create a map of userId -> user data for quick lookup
     const whopUsersMap = new Map(
       whopUsers.map(u => [u.id, { name: u.name, username: u.username, avatar: u.avatar }])
@@ -44,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     // Filter cards to only those in company's lists
     const listIds = lists.map(l => l.id);
-    const cards = allCards.filter(c => listIds.includes(c.list_id));
+    const cards = transformedCards.filter(c => listIds.includes(c.list_id));
 
     // Status breakdown
     const notStartedCount = cards.filter((c) => c.status === 'not_started').length;
@@ -118,6 +129,7 @@ export async function GET(request: NextRequest) {
     // User metrics (based on ALL users in company from whop_users cache + card assignments)
     const userMetrics = await Promise.all(
       Array.from(allUserIds).map(async (userId) => {
+        // Get cards assigned to this user via card_assignees table
         const userCards = cards.filter((c) => c.assigned_to?.includes(userId));
         const userNotStarted = userCards.filter((c) => c.status === 'not_started').length;
         const userInProgress = userCards.filter((c) => c.status === 'in_progress').length;

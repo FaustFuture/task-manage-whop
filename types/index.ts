@@ -53,7 +53,7 @@ export interface Subtask {
   order: number;
 }
 
-export type ViewMode = "admin" | "member";
+export type ViewMode = "admin" | "member" | "boards";
 
 // Admin Analytics Types
 export type BoardHealth = 'healthy' | 'at_risk' | 'stalled';

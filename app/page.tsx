@@ -5,6 +5,9 @@ import { useStore } from '@/store/useStore';
 import { ViewSwitcher } from '@/components/ViewSwitcher';
 import { AdminDashboard } from '@/components/AdminDashboard';
 import { MemberDashboard } from '@/components/MemberDashboard';
+import { BoardList } from '@/components/BoardList';
+import { AllBoardsList } from '@/components/AllBoardsList';
+import { BoardView } from '@/components/BoardView';
 import { CardModal } from '@/components/CardModal';
 import { api } from '@/lib/api';
 
@@ -47,7 +50,7 @@ export default function Home() {
           <div>
             <h1 className="text-2xl font-bold text-white">Task Manager</h1>
             <p className="text-sm text-zinc-400">
-              {viewMode === 'admin' ? 'Admin' : 'Member'} view
+              {viewMode === 'admin' ? 'Admin' : viewMode === 'boards' ? 'Boards' : 'Member'} view
               {currentUser?.name && ` for ${currentUser.name}`}
             </p>
           </div>
@@ -55,7 +58,13 @@ export default function Home() {
         </div>
       </header>
 
-      {viewMode === 'admin' ? <AdminDashboard /> : <MemberDashboard />}
+      {viewMode === 'admin' ? (
+        <AdminDashboard />
+      ) : viewMode === 'boards' ? (
+        selectedBoardId ? <BoardView /> : <AllBoardsList />
+      ) : (
+        <MemberDashboard />
+      )}
 
       <CardModal />
     </main>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useStore } from '@/store/useStore';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, Plus, Lock } from 'lucide-react';
 import { BoardList as ListComponent } from './List';
 import { useState } from 'react';
 import {
@@ -19,11 +19,13 @@ import { Card } from '@/types';
 import { ListSkeleton } from './Skeletons';
 
 export function BoardView() {
-  const { boards, lists, cards, selectedBoardId, setSelectedBoard, addList, moveCard, isLoadingLists, isLoadingCards } = useStore();
+  const { boards, lists, cards, selectedBoardId, setSelectedBoard, addList, moveCard, isLoadingLists, isLoadingCards, viewMode } = useStore();
   const [isAddingList, setIsAddingList] = useState(false);
   const [newListTitle, setNewListTitle] = useState('');
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
+  
+  const isReadOnly = viewMode === 'boards';
 
   const currentBoard = boards.find((b) => b.id === selectedBoardId);
   const boardLists = lists
@@ -34,6 +36,7 @@ export function BoardView() {
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8,
+        ...(isReadOnly ? { delay: 999999 } : {}), // Effectively disable dragging in read-only mode
       },
     })
   );
@@ -58,6 +61,8 @@ export function BoardView() {
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
+    if (isReadOnly) return; // Disable drag and drop in read-only mode
+    
     const { active, over } = event;
     setActiveId(null);
     setOverId(null);
@@ -136,6 +141,12 @@ export function BoardView() {
             <ArrowLeft className="text-zinc-400" size={20} />
           </button>
           <h1 className="text-xl font-bold text-white">{currentBoard.title}</h1>
+          {isReadOnly && (
+            <div className="ml-auto flex items-center gap-2 px-3 py-1.5 bg-zinc-800 text-zinc-400 rounded-lg text-sm">
+              <Lock size={14} />
+              <span>Read Only</span>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-x-auto p-8 scrollbar-emerald">
@@ -154,53 +165,58 @@ export function BoardView() {
                   list={list}
                   activeCardId={activeId}
                   overCardId={overId}
+                  readOnly={isReadOnly}
                 />
               ))
             )}
 
-            {isAddingList ? (
-              <div className="flex-shrink-0 w-72 bg-zinc-800 rounded-lg p-4">
-                <input
-                  type="text"
-                  value={newListTitle}
-                  onChange={(e) => setNewListTitle(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleAddList();
-                    if (e.key === 'Escape') {
-                      setIsAddingList(false);
-                      setNewListTitle('');
-                    }
-                  }}
-                  placeholder="List title..."
-                  className="w-full bg-zinc-900 text-white px-3 py-2 rounded-lg border border-zinc-700 focus:border-emerald-500 focus:outline-none mb-3"
-                  autoFocus
-                />
-                <div className="flex gap-2">
+            {!isReadOnly && (
+              <>
+                {isAddingList ? (
+                  <div className="flex-shrink-0 w-72 bg-zinc-800 rounded-lg p-4">
+                    <input
+                      type="text"
+                      value={newListTitle}
+                      onChange={(e) => setNewListTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleAddList();
+                        if (e.key === 'Escape') {
+                          setIsAddingList(false);
+                          setNewListTitle('');
+                        }
+                      }}
+                      placeholder="List title..."
+                      className="w-full bg-zinc-900 text-white px-3 py-2 rounded-lg border border-zinc-700 focus:border-emerald-500 focus:outline-none mb-3"
+                      autoFocus
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleAddList}
+                        className="flex-1 px-3 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors text-sm font-medium cursor-pointer"
+                      >
+                        Add List
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsAddingList(false);
+                          setNewListTitle('');
+                        }}
+                        className="px-3 py-2 bg-zinc-700 text-white rounded-lg hover:bg-zinc-600 transition-colors text-sm font-medium cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
                   <button
-                    onClick={handleAddList}
-                    className="flex-1 px-3 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors text-sm font-medium cursor-pointer"
+                    onClick={() => setIsAddingList(true)}
+                    className="flex-shrink-0 w-72 px-3 py-2 bg-zinc-800/50 hover:bg-zinc-800 rounded-lg border-2 border-dashed border-zinc-700 hover:border-emerald-500 transition-all flex items-center gap-2 text-zinc-400 hover:text-emerald-500 cursor-pointer text-sm"
                   >
+                    <Plus size={16} />
                     Add List
                   </button>
-                  <button
-                    onClick={() => {
-                      setIsAddingList(false);
-                      setNewListTitle('');
-                    }}
-                    className="px-3 py-2 bg-zinc-700 text-white rounded-lg hover:bg-zinc-600 transition-colors text-sm font-medium cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={() => setIsAddingList(true)}
-                className="flex-shrink-0 w-72 px-3 py-2 bg-zinc-800/50 hover:bg-zinc-800 rounded-lg border-2 border-dashed border-zinc-700 hover:border-emerald-500 transition-all flex items-center gap-2 text-zinc-400 hover:text-emerald-500 cursor-pointer text-sm"
-              >
-                <Plus size={16} />
-                Add List
-              </button>
+                )}
+              </>
             )}
           </div>
         </div>

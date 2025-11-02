@@ -94,6 +94,26 @@ export async function POST(request: NextRequest) {
           : 0;
     }
 
+    // Get the board ID from the list to find all board members
+    const { data: list } = await supabase
+      .from("lists")
+      .select("board_id")
+      .eq("id", listId)
+      .single();
+
+    if (!list) {
+      return NextResponse.json(
+        { error: "List not found" },
+        { status: 404 }
+      );
+    }
+
+    // Get all board members
+    const { data: boardMembers } = await supabase
+      .from("board_users")
+      .select("user_id")
+      .eq("board_id", list.board_id);
+
     // Create card (createdBy is now optional)
     const { data: card, error: cardError } = await supabase
       .from("cards")
@@ -112,9 +132,16 @@ export async function POST(request: NextRequest) {
 
     if (cardError) throw cardError;
 
-    // Add assignees
-    if (assignedTo && Array.isArray(assignedTo) && assignedTo.length > 0) {
-      const cardAssignees = assignedTo.map((userId: string) => ({
+    // Automatically assign card to all board members
+    const memberUserIds = boardMembers?.map((bm) => bm.user_id) || [];
+
+    // Merge with any explicitly provided assignedTo users
+    const allAssignees = assignedTo && Array.isArray(assignedTo) && assignedTo.length > 0
+      ? [...new Set([...memberUserIds, ...assignedTo])] // Combine and deduplicate
+      : memberUserIds;
+
+    if (allAssignees.length > 0) {
+      const cardAssignees = allAssignees.map((userId: string) => ({
         card_id: card.id,
         user_id: userId,
       }));
@@ -133,7 +160,7 @@ export async function POST(request: NextRequest) {
       title: card.title,
       description: card.description,
       status: card.status || "not_started",
-      assignedTo: assignedTo || [],
+      assignedTo: allAssignees, // Return all assigned users (board members + explicit)
       createdBy: card.created_by,
       createdAt: new Date(card.created_at),
       order: card.order,

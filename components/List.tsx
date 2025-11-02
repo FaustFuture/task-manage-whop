@@ -15,9 +15,10 @@ interface BoardListProps {
   list: ListType;
   activeCardId: string | null;
   overCardId: string | null;
+  readOnly?: boolean;
 }
 
-export function BoardList({ list, activeCardId, overCardId }: BoardListProps) {
+export function BoardList({ list, activeCardId, overCardId, readOnly = false }: BoardListProps) {
   const { cards, addCard, deleteList } = useStore();
   const [isAddingCard, setIsAddingCard] = useState(false);
   const [newCardTitle, setNewCardTitle] = useState('');
@@ -45,28 +46,30 @@ export function BoardList({ list, activeCardId, overCardId }: BoardListProps) {
     <div className="flex-shrink-0 w-72 bg-zinc-800 rounded-lg p-4 flex flex-col">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-white">{list.title}</h3>
-        <div className="relative">
-          <button
-            onClick={() => setShowMenu(!showMenu)}
-            className="p-1 hover:bg-zinc-700 rounded transition-colors cursor-pointer"
-          >
-            <MoreVertical className="text-zinc-400" size={16} />
-          </button>
-          {showMenu && (
-            <div className="absolute right-0 mt-2 w-48 bg-zinc-900 rounded-lg border border-zinc-700 shadow-xl z-10">
-              <button
-                onClick={() => {
-                  deleteList(list.id);
-                  setShowMenu(false);
-                }}
-                className="w-full px-4 py-2 text-left text-red-400 hover:bg-zinc-800 rounded-lg flex items-center gap-2 cursor-pointer"
-              >
-                <Trash2 size={16} />
-                Delete List
-              </button>
-            </div>
-          )}
-        </div>
+        {!readOnly && (
+          <div className="relative">
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="p-1 hover:bg-zinc-700 rounded transition-colors cursor-pointer"
+            >
+              <MoreVertical className="text-zinc-400" size={16} />
+            </button>
+            {showMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-zinc-900 rounded-lg border border-zinc-700 shadow-xl z-10">
+                <button
+                  onClick={() => {
+                    deleteList(list.id);
+                    setShowMenu(false);
+                  }}
+                  className="w-full px-4 py-2 text-left text-red-400 hover:bg-zinc-800 rounded-lg flex items-center gap-2 cursor-pointer"
+                >
+                  <Trash2 size={16} />
+                  Delete List
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div
@@ -84,7 +87,7 @@ export function BoardList({ list, activeCardId, overCardId }: BoardListProps) {
                   {showPlaceholder && (
                     <div className="h-[40px] mb-2 bg-emerald-500/10 border-2 border-dashed border-emerald-500 rounded" />
                   )}
-                  {!isBeingDragged && <CardItem card={card} />}
+                  {!isBeingDragged && <CardItem card={card} readOnly={readOnly} />}
                   {isBeingDragged && (
                     <div className="h-[40px] bg-zinc-800/50 border-2 border-dashed border-zinc-600 rounded" />
                   )}
@@ -99,57 +102,61 @@ export function BoardList({ list, activeCardId, overCardId }: BoardListProps) {
         </div>
       </div>
 
-      {isAddingCard ? (
-        <div>
-          <textarea
-            value={newCardTitle}
-            onChange={(e) => {
-              setNewCardTitle(e.target.value);
-              // Auto-resize textarea
-              e.target.style.height = 'auto';
-              e.target.style.height = e.target.scrollHeight + 'px';
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleAddCard();
-              }
-              if (e.key === 'Escape') {
-                setIsAddingCard(false);
-                setNewCardTitle('');
-              }
-            }}
-            placeholder="Enter card title..."
-            className="w-full bg-zinc-900 text-white text-sm px-3 py-2 rounded-lg border border-zinc-700 focus:border-emerald-500 focus:outline-none mb-2 resize-none overflow-hidden"
-            rows={1}
-            autoFocus
-          />
-          <div className="flex gap-2">
+      {!readOnly && (
+        <>
+          {isAddingCard ? (
+            <div>
+              <textarea
+                value={newCardTitle}
+                onChange={(e) => {
+                  setNewCardTitle(e.target.value);
+                  // Auto-resize textarea
+                  e.target.style.height = 'auto';
+                  e.target.style.height = e.target.scrollHeight + 'px';
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleAddCard();
+                  }
+                  if (e.key === 'Escape') {
+                    setIsAddingCard(false);
+                    setNewCardTitle('');
+                  }
+                }}
+                placeholder="Enter card title..."
+                className="w-full bg-zinc-900 text-white text-sm px-3 py-2 rounded-lg border border-zinc-700 focus:border-emerald-500 focus:outline-none mb-2 resize-none overflow-hidden"
+                rows={1}
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={handleAddCard}
+                  className="flex-1 px-3 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors text-sm font-medium cursor-pointer"
+                >
+                  Add Card
+                </button>
+                <button
+                  onClick={() => {
+                    setIsAddingCard(false);
+                    setNewCardTitle('');
+                  }}
+                  className="px-3 py-2 bg-zinc-700 text-white rounded-lg hover:bg-zinc-600 transition-colors text-sm font-medium cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
             <button
-              onClick={handleAddCard}
-              className="flex-1 px-3 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors text-sm font-medium cursor-pointer"
+              onClick={() => setIsAddingCard(true)}
+              className="w-full p-2 mt-2 text-zinc-400 hover:bg-zinc-700 hover:text-white rounded-lg transition-all flex items-center gap-2 text-sm cursor-pointer"
             >
-              Add Card
+              <Plus size={16} />
+              Add a card
             </button>
-            <button
-              onClick={() => {
-                setIsAddingCard(false);
-                setNewCardTitle('');
-              }}
-              className="px-3 py-2 bg-zinc-700 text-white rounded-lg hover:bg-zinc-600 transition-colors text-sm font-medium cursor-pointer"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button
-          onClick={() => setIsAddingCard(true)}
-          className="w-full p-2 mt-2 text-zinc-400 hover:bg-zinc-700 hover:text-white rounded-lg transition-all flex items-center gap-2 text-sm cursor-pointer"
-        >
-          <Plus size={16} />
-          Add a card
-        </button>
+          )}
+        </>
       )}
     </div>
   );

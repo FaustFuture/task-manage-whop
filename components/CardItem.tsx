@@ -36,9 +36,10 @@ const allStatuses: TaskStatus[] = ['not_started', 'in_progress', 'done'];
 
 interface CardItemProps {
   card: Card;
+  readOnly?: boolean;
 }
 
-export function CardItem({ card }: CardItemProps) {
+export function CardItem({ card, readOnly = false }: CardItemProps) {
   const { openCardModal, updateCard } = useStore();
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
@@ -48,6 +49,7 @@ export function CardItem({ card }: CardItemProps) {
     setNodeRef,
   } = useSortable({
     id: card.id,
+    disabled: readOnly, // Disable sorting in read-only mode
   });
 
   const handleStatusChange = (newStatus: TaskStatus) => {
@@ -62,14 +64,21 @@ export function CardItem({ card }: CardItemProps) {
       className={`relative bg-zinc-900 rounded-lg border border-zinc-700 ${statusConfig[card.status].hoverBorder} group hover:bg-zinc-800/50 transition-colors duration-200`}
     >
       {/* Interactive Status Bar - Left Edge */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setShowStatusDropdown(!showStatusDropdown);
-        }}
-        className={`absolute left-0 top-0 bottom-0 w-1 ${statusConfig[card.status].dotColor} group-hover:w-5 transition-all duration-200 cursor-pointer z-10 rounded-l-lg`}
-        title={statusConfig[card.status].label}
-      />
+      {readOnly ? (
+        <div
+          className={`absolute left-0 top-0 bottom-0 w-1 ${statusConfig[card.status].dotColor} rounded-l-lg`}
+          title={statusConfig[card.status].label}
+        />
+      ) : (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowStatusDropdown(!showStatusDropdown);
+          }}
+          className={`absolute left-0 top-0 bottom-0 w-1 ${statusConfig[card.status].dotColor} group-hover:w-5 transition-all duration-200 cursor-pointer z-10 rounded-l-lg`}
+          title={statusConfig[card.status].label}
+        />
+      )}
 
       {/* Dropdown Menu */}
       {showStatusDropdown && (
@@ -102,9 +111,9 @@ export function CardItem({ card }: CardItemProps) {
 
       {/* Card Content */}
       <div
-        {...listeners}
+        {...(readOnly ? {} : listeners)}
         onClick={() => openCardModal(card.id)}
-        className="pl-3 group-hover:pl-7 pr-2 py-1.5 cursor-grab active:cursor-grabbing transition-all duration-200"
+        className={`pl-3 ${readOnly ? '' : 'group-hover:pl-7'} pr-2 py-1.5 ${readOnly ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'} transition-all duration-200`}
       >
         <div
           className={`text-sm leading-tight text-white select-none ${statusConfig[card.status].hoverText} break-words`}
