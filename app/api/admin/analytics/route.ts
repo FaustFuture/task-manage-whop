@@ -108,9 +108,9 @@ export async function GET(request: NextRequest) {
         const userDone = userCards.filter((c) => c.status === 'done').length;
         const userTotal = userCards.length;
 
-        // Calculate boards user is member of (check board_members table)
+        // Calculate boards user is member of (check board_users table)
         const { data: memberBoards } = await supabase
-          .from('board_members')
+          .from('board_users')
           .select('board_id')
           .eq('user_id', userId)
           .in('board_id', boardIds);

@@ -12,7 +12,7 @@ export async function GET(
       .from('boards')
       .select(`
         *,
-        board_members (
+        board_users (
           user_id
         )
       `)
@@ -31,8 +31,8 @@ export async function GET(
     // Transform data
     const transformedBoard = {
       ...board,
-      members: board.board_members?.map((bm: any) => bm.user_id) || [],
-      board_members: undefined,
+      members: board.board_users?.map((bm: any) => bm.user_id) || [],
+      board_users: undefined,
       createdAt: new Date(board.created_at),
     };
 
@@ -80,7 +80,7 @@ export async function PATCH(
     if (members && Array.isArray(members)) {
       // Delete existing members
       await supabase
-        .from('board_members')
+        .from('board_users')
         .delete()
         .eq('board_id', id);
 
@@ -92,14 +92,14 @@ export async function PATCH(
         }));
 
         await supabase
-          .from('board_members')
+          .from('board_users')
           .insert(boardMembers);
       }
     }
 
     // Fetch updated members
     const { data: boardMembers } = await supabase
-      .from('board_members')
+      .from('board_users')
       .select('user_id')
       .eq('board_id', id);
 

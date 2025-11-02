@@ -3,19 +3,24 @@
 -- Run this in your Supabase SQL Editor AFTER the initial schema is created
 
 -- Step 1: Add company_id to boards table
+-- Temporarily add with a default for existing rows
 ALTER TABLE boards
 ADD COLUMN company_id TEXT NOT NULL DEFAULT 'default';
 
--- Step 2: Create index for company_id filtering
+-- Step 2: Remove the default constraint (new boards must specify companyId)
+ALTER TABLE boards
+ALTER COLUMN company_id DROP DEFAULT;
+
+-- Step 3: Create index for company_id filtering
 CREATE INDEX idx_boards_company_id ON boards(company_id);
 
--- Step 3: Modify board_members to use TEXT user_id (Whop user IDs)
+-- Step 4: Modify board_users to use TEXT user_id (Whop user IDs)
 -- Drop foreign key constraint first
-ALTER TABLE board_members
-DROP CONSTRAINT IF EXISTS board_members_user_id_fkey;
+ALTER TABLE board_users
+DROP CONSTRAINT IF EXISTS board_users_user_id_fkey;
 
 -- Change column type to TEXT
-ALTER TABLE board_members
+ALTER TABLE board_users
 ALTER COLUMN user_id TYPE TEXT;
 
 -- Step 4: Modify card_assignees to use TEXT user_id (Whop user IDs)
@@ -46,8 +51,8 @@ ALTER TABLE cards
 ALTER COLUMN created_by TYPE TEXT;
 
 -- Step 7: Recreate indexes after type changes
-DROP INDEX IF EXISTS idx_board_members_user_id;
-CREATE INDEX idx_board_members_user_id ON board_members(user_id);
+DROP INDEX IF EXISTS idx_board_users_user_id;
+CREATE INDEX idx_board_users_user_id ON board_users(user_id);
 
 DROP INDEX IF EXISTS idx_card_assignees_user_id;
 CREATE INDEX idx_card_assignees_user_id ON card_assignees(user_id);
@@ -57,5 +62,5 @@ CREATE INDEX idx_card_assignees_user_id ON card_assignees(user_id);
 
 -- Verification queries:
 -- SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'boards';
--- SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'board_members';
+-- SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'board_users';
 -- SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'card_assignees';

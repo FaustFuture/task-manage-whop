@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       .from('boards')
       .select(`
         *,
-        board_members (
+        board_users (
           user_id
         )
       `)
@@ -58,8 +58,8 @@ export async function GET(request: NextRequest) {
         return {
           ...board,
           companyId: board.company_id,
-          members: board.board_members?.map((bm: any) => bm.user_id) || [],
-          board_members: undefined,
+          members: board.board_users?.map((bm: any) => bm.user_id) || [],
+          board_users: undefined,
           company_id: undefined,
           createdAt: new Date(board.created_at),
           taskCount,
@@ -83,6 +83,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { title, companyId, createdBy, members } = body;
 
+    console.log('[API DEBUG] POST /api/boards received:', {
+      title,
+      companyId,
+      createdBy,
+      members,
+      fullBody: body
+    });
+
     if (!title) {
       return NextResponse.json(
         { error: 'Title is required' },
@@ -91,6 +99,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!companyId) {
+      console.error('[API ERROR] companyId is missing!', body);
       return NextResponse.json(
         { error: 'companyId is required' },
         { status: 400 }
@@ -98,13 +107,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Create board with companyId
+    const insertData = {
+      title,
+      company_id: companyId,
+      created_by: createdBy || null
+    };
+
+    console.log('[API DEBUG] Inserting into Supabase:', insertData);
+
     const { data: board, error: boardError } = await supabase
       .from('boards')
-      .insert([{
-        title,
-        company_id: companyId,
-        created_by: createdBy || null
-      }])
+      .insert([insertData])
       .select()
       .single();
 
@@ -119,7 +132,7 @@ export async function POST(request: NextRequest) {
       }));
 
       const { error: membersError } = await supabase
-        .from('board_members')
+        .from('board_users')
         .insert(boardMembers);
 
       if (membersError) throw membersError;

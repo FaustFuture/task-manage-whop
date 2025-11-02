@@ -100,18 +100,31 @@ export const useStore = create<StoreState>()((set) => ({
   addBoard: async (title) => {
     const state = useStore.getState();
 
+    console.log('[DEBUG] addBoard called with:', {
+      title,
+      companyId: state.companyId,
+      currentUser: state.currentUser?.id
+    });
+
     if (!state.companyId) {
-      console.error('Cannot create board without companyId');
+      console.error('❌ Cannot create board without companyId! Store state:', {
+        companyId: state.companyId,
+        currentUser: state.currentUser
+      });
       return;
     }
 
     try {
-      const result = await api.boards.create({
+      const boardData = {
         title,
         companyId: state.companyId,
         createdBy: state.currentUser?.id || null,
         members: state.currentUser?.id ? [state.currentUser.id] : [],
-      });
+      };
+
+      console.log('[DEBUG] Creating board with data:', boardData);
+
+      const result = await api.boards.create(boardData);
 
       if (result.data) {
         set((state) => ({
