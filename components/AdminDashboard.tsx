@@ -173,8 +173,7 @@ export function AdminDashboard() {
         <OverviewMetrics overview={analytics.overview} />
 
         {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Task Creation Trend */}
+        {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-zinc-800 rounded-lg border border-zinc-700 p-6">
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp className="text-emerald-500" size={20} />
@@ -192,7 +191,6 @@ export function AdminDashboard() {
             </p>
           </div>
 
-          {/* Completion Rate Trend */}
           <div className="bg-zinc-800 rounded-lg border border-zinc-700 p-6">
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp className="text-cyan-500" size={20} />
@@ -209,7 +207,7 @@ export function AdminDashboard() {
               Mock data showing completion rate changes over time
             </p>
           </div>
-        </div>
+        </div> */}
 
         {/* Board Analytics */}
         <div>

@@ -18,9 +18,10 @@ export function BoardList() {
     }
   };
 
-  // All boards are already filtered by companyId in the API
-  // No need to filter by user membership here
-  const userBoards = boards;
+  // Filter boards by user membership (show only boards where current user is a member)
+  const userBoards = boards.filter((board) =>
+    currentUser && board.members.includes(currentUser.id)
+  );
 
   return (
     <div className="p-8">

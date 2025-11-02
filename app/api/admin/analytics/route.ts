@@ -57,8 +57,14 @@ export async function GET(request: NextRequest) {
     );
     const activeUsers = activeUserIds.size;
 
+    // Get all user IDs from whop_users cache (includes all company members, not just those with tasks)
+    const allUserIds = new Set([
+      ...whopUsers.map(u => u.id),
+      ...Array.from(activeUserIds)
+    ]);
+
     // Calculate metrics
-    const totalUsers = activeUsers; // Count unique users in this company
+    const totalUsers = allUserIds.size; // Count all users in this company (from cache + assigned cards)
     const totalBoards = boards.length;
     const totalCards = cards.length;
 
@@ -109,9 +115,9 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => b.taskCount - a.taskCount)
       .slice(0, 5);
 
-    // User metrics (based on Whop user IDs from card assignments)
+    // User metrics (based on ALL users in company from whop_users cache + card assignments)
     const userMetrics = await Promise.all(
-      Array.from(activeUserIds).map(async (userId) => {
+      Array.from(allUserIds).map(async (userId) => {
         const userCards = cards.filter((c) => c.assigned_to?.includes(userId));
         const userNotStarted = userCards.filter((c) => c.status === 'not_started').length;
         const userInProgress = userCards.filter((c) => c.status === 'in_progress').length;
