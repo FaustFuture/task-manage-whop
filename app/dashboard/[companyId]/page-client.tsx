@@ -10,9 +10,13 @@ import { api } from "@/lib/api";
 
 interface HomeProps {
   access: "no_access" | "admin" | "customer";
+  userId?: string;
+  username?: string;
+  name: string | null;
+  companyId?: string;
 }
 
-export default function Home({ access }: HomeProps) {
+export default function Home({ access, userId, username, name, companyId }: HomeProps) {
   const {
     viewMode,
     currentUser,
@@ -20,26 +24,41 @@ export default function Home({ access }: HomeProps) {
     loadBoards,
     loadLists,
     loadCards,
-    loadUsers,
     setCurrentUser,
   } = useStore();
 
-  // Load data from Supabase on mount
+  // Initialize Whop user on mount
   useEffect(() => {
+    if (userId && username && companyId) {
+      // Map Whop access level to our role system
+      const role = access === 'admin' ? 'admin' : 'member';
+
+      setCurrentUser({
+        id: userId,
+        name: name || null,
+        username: username,
+        role: role,
+      }, companyId);
+    }
+  }, [userId, username, name, companyId, access, setCurrentUser]);
+
+  // Load data from Supabase after user is set
+  useEffect(() => {
+    if (!currentUser || !companyId) return;
+
     const loadData = async () => {
-      // Load boards directly without requiring users
+      // Load boards filtered by companyId
       await loadBoards();
 
       // Load users, lists, and all cards if in admin mode
       if (viewMode === "admin") {
-        await loadUsers();
         await loadLists(); // Load all lists without board filter
         await loadCards(); // Load all cards without board filter
       }
     };
 
     loadData();
-  }, [viewMode]);
+  }, [viewMode, currentUser, companyId]);
 
   // Load lists and cards when board is selected
   useEffect(() => {

@@ -19,12 +19,18 @@ export default async function DashboardPage({
     whopsdk.users.retrieve(userId),
     whopsdk.users.checkAccess(companyId, { id: userId }),
   ]);
-
+	
   const displayName = user.name || `@${user.username}`;
 
   return (
     <>
-      <Home access={access.access_level}/>
+      <Home
+        access={access.access_level}
+        userId={userId}
+        username={user.username}
+        name={user.name}
+        companyId={companyId}
+      />
       <div className="flex flex-col p-8 gap-4">
         <div className="flex justify-between items-center gap-4">
           <h1 className="text-9">

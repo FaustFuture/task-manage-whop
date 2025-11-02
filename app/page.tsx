@@ -9,24 +9,28 @@ import { CardModal } from '@/components/CardModal';
 import { api } from '@/lib/api';
 
 export default function Home() {
-  const { viewMode, currentUser, selectedBoardId, loadBoards, loadLists, loadCards, loadUsers, setCurrentUser } = useStore();
+  const { viewMode, currentUser, selectedBoardId, loadBoards, loadLists, loadCards, companyId } = useStore();
 
   // Load data from Supabase on mount
   useEffect(() => {
+    if (!companyId) {
+      console.warn('No companyId set. Please access via Whop dashboard.');
+      return;
+    }
+
     const loadData = async () => {
-      // Load boards directly without requiring users
+      // Load boards filtered by companyId
       await loadBoards();
 
-      // Load users, lists, and all cards if in admin mode
+      // Load lists and all cards if in admin mode
       if (viewMode === 'admin') {
-        await loadUsers();
         await loadLists(); // Load all lists without board filter
         await loadCards(); // Load all cards without board filter
       }
     };
 
     loadData();
-  }, [viewMode]);
+  }, [viewMode, companyId]);
 
   // Load lists and cards when board is selected
   useEffect(() => {

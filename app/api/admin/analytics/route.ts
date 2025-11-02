@@ -1,41 +1,56 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Fetch all necessary data
-    const [usersRes, boardsRes, cardsRes, listsRes] = await Promise.all([
-      supabase.from('users').select('*'),
-      supabase.from('boards').select('*'),
+    const searchParams = request.nextUrl.searchParams;
+    const companyId = searchParams.get('companyId');
+
+    if (!companyId) {
+      return NextResponse.json(
+        { error: 'companyId is required' },
+        { status: 400 }
+      );
+    }
+
+    // Fetch all necessary data filtered by companyId
+    const [boardsRes, cardsRes, listsRes] = await Promise.all([
+      supabase.from('boards').select('*').eq('company_id', companyId),
       supabase.from('cards').select('*'),
       supabase.from('lists').select('*'),
     ]);
 
-    if (usersRes.error) throw usersRes.error;
     if (boardsRes.error) throw boardsRes.error;
     if (cardsRes.error) throw cardsRes.error;
     if (listsRes.error) throw listsRes.error;
 
-    const users = usersRes.data || [];
     const boards = boardsRes.data || [];
-    const cards = cardsRes.data || [];
-    const lists = listsRes.data || [];
+    const allCards = cardsRes.data || [];
+    const allLists = listsRes.data || [];
 
-    // Calculate metrics
-    const totalUsers = users.length;
-    const totalBoards = boards.length;
-    const totalCards = cards.length;
+    // Filter lists to only those in company's boards
+    const boardIds = boards.map(b => b.id);
+    const lists = allLists.filter(l => boardIds.includes(l.board_id));
+
+    // Filter cards to only those in company's lists
+    const listIds = lists.map(l => l.id);
+    const cards = allCards.filter(c => listIds.includes(c.list_id));
 
     // Status breakdown
     const notStartedCount = cards.filter((c) => c.status === 'not_started').length;
     const inProgressCount = cards.filter((c) => c.status === 'in_progress').length;
     const doneCount = cards.filter((c) => c.status === 'done').length;
 
-    // Calculate active users (users with at least one assigned card)
+    // Calculate active users (users with at least one assigned card in this company)
     const activeUserIds = new Set(
       cards.flatMap((c) => c.assigned_to || [])
     );
     const activeUsers = activeUserIds.size;
+
+    // Calculate metrics
+    const totalUsers = activeUsers; // Count unique users in this company
+    const totalBoards = boards.length;
+    const totalCards = cards.length;
 
     // Completion rate
     const completionRate = totalCards > 0 ? Math.round((doneCount / totalCards) * 100) : 0;
@@ -84,30 +99,36 @@ export async function GET() {
       .sort((a, b) => b.taskCount - a.taskCount)
       .slice(0, 5);
 
-    // User metrics
-    const userMetrics = users.map((user) => {
-      const userCards = cards.filter((c) => c.assigned_to?.includes(user.id));
-      const userNotStarted = userCards.filter((c) => c.status === 'not_started').length;
-      const userInProgress = userCards.filter((c) => c.status === 'in_progress').length;
-      const userDone = userCards.filter((c) => c.status === 'done').length;
-      const userTotal = userCards.length;
+    // User metrics (based on Whop user IDs from card assignments)
+    const userMetrics = await Promise.all(
+      Array.from(activeUserIds).map(async (userId) => {
+        const userCards = cards.filter((c) => c.assigned_to?.includes(userId));
+        const userNotStarted = userCards.filter((c) => c.status === 'not_started').length;
+        const userInProgress = userCards.filter((c) => c.status === 'in_progress').length;
+        const userDone = userCards.filter((c) => c.status === 'done').length;
+        const userTotal = userCards.length;
 
-      // Calculate boards user is member of
-      const userBoards = boards.filter((b) => b.members?.includes(user.id));
+        // Calculate boards user is member of (check board_members table)
+        const { data: memberBoards } = await supabase
+          .from('board_members')
+          .select('board_id')
+          .eq('user_id', userId)
+          .in('board_id', boardIds);
 
-      return {
-        userId: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        totalTasks: userTotal,
-        notStarted: userNotStarted,
-        inProgress: userInProgress,
-        done: userDone,
-        completionRate: userTotal > 0 ? Math.round((userDone / userTotal) * 100) : 0,
-        boardsCount: userBoards.length,
-      };
-    });
+        return {
+          userId: userId,
+          name: userId, // We don't have Whop user names here, show userId
+          username: userId, // Will be displayed as username
+          role: 'member' as const, // Default role, actual role comes from Whop
+          totalTasks: userTotal,
+          notStarted: userNotStarted,
+          inProgress: userInProgress,
+          done: userDone,
+          completionRate: userTotal > 0 ? Math.round((userDone / userTotal) * 100) : 0,
+          boardsCount: memberBoards?.length || 0,
+        };
+      })
+    );
 
     // Top performers (highest completion rate with at least 3 tasks)
     const topPerformers = userMetrics

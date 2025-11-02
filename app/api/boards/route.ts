@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
-// GET /api/boards - Get all boards with members
+// GET /api/boards - Get all boards with members (filtered by companyId)
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const userId = searchParams.get('userId');
+    const companyId = searchParams.get('companyId');
+
+    if (!companyId) {
+      return NextResponse.json(
+        { error: 'companyId is required' },
+        { status: 400 }
+      );
+    }
 
     let query = supabase
       .from('boards')
@@ -15,22 +22,8 @@ export async function GET(request: NextRequest) {
           user_id
         )
       `)
+      .eq('company_id', companyId)
       .order('created_at', { ascending: false });
-
-    // Optionally filter by user
-    if (userId) {
-      // First, get the board IDs for the user
-      const { data: memberBoards } = await supabase
-        .from('board_members')
-        .select('board_id')
-        .eq('user_id', userId);
-
-      const boardIds = memberBoards?.map(bm => bm.board_id) || [];
-
-      if (boardIds.length > 0) {
-        query = query.in('id', boardIds);
-      }
-    }
 
     const { data: boards, error } = await query;
 
@@ -64,8 +57,10 @@ export async function GET(request: NextRequest) {
 
         return {
           ...board,
+          companyId: board.company_id,
           members: board.board_members?.map((bm: any) => bm.user_id) || [],
           board_members: undefined,
+          company_id: undefined,
           createdAt: new Date(board.created_at),
           taskCount,
         };
@@ -86,7 +81,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { title, createdBy, members } = body;
+    const { title, companyId, createdBy, members } = body;
 
     if (!title) {
       return NextResponse.json(
@@ -95,10 +90,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create board (createdBy is now optional)
+    if (!companyId) {
+      return NextResponse.json(
+        { error: 'companyId is required' },
+        { status: 400 }
+      );
+    }
+
+    // Create board with companyId
     const { data: board, error: boardError } = await supabase
       .from('boards')
-      .insert([{ title, created_by: createdBy || null }])
+      .insert([{
+        title,
+        company_id: companyId,
+        created_by: createdBy || null
+      }])
       .select()
       .single();
 
@@ -123,7 +129,9 @@ export async function POST(request: NextRequest) {
       {
         data: {
           ...board,
+          companyId: board.company_id,
           members: membersList,
+          company_id: undefined,
           createdAt: new Date(board.created_at),
           taskCount: 0,
         }

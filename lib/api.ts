@@ -31,12 +31,12 @@ export const api = {
 
   // Boards
   boards: {
-    getAll: async (userId?: string) => {
-      const url = userId ? `/api/boards?userId=${userId}` : '/api/boards';
+    getAll: async (companyId: string) => {
+      const url = `/api/boards?companyId=${companyId}`;
       const res = await fetch(url);
       return res.json();
     },
-    create: async (data: { title: string; createdBy: string | null; members?: string[] }) => {
+    create: async (data: { title: string; companyId: string; createdBy: string | null; members?: string[] }) => {
       const res = await fetch('/api/boards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -166,8 +166,8 @@ export const api = {
 
   // Admin Analytics
   admin: {
-    getAnalytics: async () => {
-      const res = await fetch('/api/admin/analytics');
+    getAnalytics: async (companyId: string) => {
+      const res = await fetch(`/api/admin/analytics?companyId=${companyId}`);
       return res.json();
     },
   },

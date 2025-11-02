@@ -6,9 +6,9 @@ interface StoreState {
   // Auth & View
   currentUser: User | null;
   viewMode: ViewMode;
+  companyId: string | null; // Whop company ID for filtering
 
   // Data
-  users: User[];
   boards: Board[];
   lists: List[];
   cards: Card[];
@@ -32,7 +32,8 @@ interface StoreState {
 
   // Actions
   setViewMode: (mode: ViewMode) => void;
-  setCurrentUser: (user: User) => void;
+  setCurrentUser: (user: User, companyId: string) => void;
+  setCompanyId: (companyId: string) => void;
 
   // Board actions
   addBoard: (title: string) => Promise<void>;
@@ -57,10 +58,6 @@ interface StoreState {
   toggleSubtask: (id: string) => Promise<void>;
   deleteSubtask: (id: string) => Promise<void>;
 
-  // User actions
-  addUser: (name: string, email: string, role: 'admin' | 'member') => Promise<void>;
-  loadUsers: () => Promise<void>;
-
   // Admin Analytics
   loadAnalytics: () => Promise<void>;
   refreshAnalytics: () => Promise<void>;
@@ -76,7 +73,7 @@ export const useStore = create<StoreState>()((set) => ({
   // Initial state - will be loaded from Supabase
   currentUser: null,
   viewMode: 'member',
-  users: [],
+  companyId: null,
   boards: [],
   lists: [],
   cards: [],
@@ -95,15 +92,23 @@ export const useStore = create<StoreState>()((set) => ({
   // Actions
   setViewMode: (mode) => set({ viewMode: mode }),
 
-  setCurrentUser: (user) => set({ currentUser: user }),
+  setCurrentUser: (user, companyId) => set({ currentUser: user, companyId }),
+
+  setCompanyId: (companyId) => set({ companyId }),
 
   // Board actions
   addBoard: async (title) => {
     const state = useStore.getState();
 
+    if (!state.companyId) {
+      console.error('Cannot create board without companyId');
+      return;
+    }
+
     try {
       const result = await api.boards.create({
         title,
+        companyId: state.companyId,
         createdBy: state.currentUser?.id || null,
         members: state.currentUser?.id ? [state.currentUser.id] : [],
       });
@@ -259,29 +264,18 @@ export const useStore = create<StoreState>()((set) => ({
     }));
   },
 
-  // User actions
-  addUser: async (name, email, role) => {
-    const result = await api.users.create({ name, email, role });
-
-    if (result.data) {
-      set((state) => ({
-        users: [...state.users, result.data],
-      }));
-    }
-  },
-
-  loadUsers: async () => {
-    const result = await api.users.getAll();
-    if (result.data) {
-      set({ users: result.data });
-    }
-  },
-
   // Data loading
   loadBoards: async () => {
+    const state = useStore.getState();
+
+    if (!state.companyId) {
+      console.warn('Cannot load boards without companyId');
+      return;
+    }
+
     set({ isLoadingBoards: true });
     try {
-      const result = await api.boards.getAll();
+      const result = await api.boards.getAll(state.companyId);
       if (result.data) {
         set({ boards: result.data });
       }
@@ -330,6 +324,11 @@ export const useStore = create<StoreState>()((set) => ({
   loadAnalytics: async () => {
     const state = useStore.getState();
 
+    if (!state.companyId) {
+      console.warn('Cannot load analytics without companyId');
+      return;
+    }
+
     // Use cached analytics if less than 5 minutes old
     if (
       state.analytics &&
@@ -341,7 +340,7 @@ export const useStore = create<StoreState>()((set) => ({
 
     set({ isLoadingAnalytics: true });
     try {
-      const result = await api.admin.getAnalytics();
+      const result = await api.admin.getAnalytics(state.companyId);
       if (result.data) {
         set({
           analytics: result.data,
@@ -356,9 +355,16 @@ export const useStore = create<StoreState>()((set) => ({
   },
 
   refreshAnalytics: async () => {
+    const state = useStore.getState();
+
+    if (!state.companyId) {
+      console.warn('Cannot refresh analytics without companyId');
+      return;
+    }
+
     set({ isLoadingAnalytics: true });
     try {
-      const result = await api.admin.getAnalytics();
+      const result = await api.admin.getAnalytics(state.companyId);
       if (result.data) {
         set({
           analytics: result.data,

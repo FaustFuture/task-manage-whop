@@ -4,20 +4,21 @@ export type TaskStatus = "not_started" | "in_progress" | "done";
 
 export type TaskPriority = "low" | "medium" | "high" | "urgent";
 
+// Whop User interface (no email, uses Whop data)
 export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
+  id: string; // Whop user ID
+  name: string | null; // Display name from Whop
+  username: string; // Whop username
+  role: UserRole; // Mapped from Whop access_level
   avatar?: string;
-  lastActive?: Date;
 }
 
 export interface Board {
   id: string;
   title: string;
-  createdBy: string | null;
-  members: string[];
+  companyId: string; // Whop company ID for isolation
+  createdBy: string | null; // Whop user ID
+  members: string[]; // Array of Whop user IDs
   createdAt: Date;
   taskCount: number;
 }
@@ -71,7 +72,7 @@ export interface BoardAnalytics {
 export interface UserMetrics {
   userId: string;
   name: string;
-  email: string;
+  username: string; // Changed from email to username (Whop)
   role: UserRole;
   totalTasks: number;
   notStarted: number;

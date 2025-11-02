@@ -18,10 +18,9 @@ export function BoardList() {
     }
   };
 
-  // Show all boards if no current user, otherwise filter by user's boards
-  const userBoards = currentUser
-    ? boards.filter(board => board.members.includes(currentUser.id))
-    : boards;
+  // All boards are already filtered by companyId in the API
+  // No need to filter by user membership here
+  const userBoards = boards;
 
   return (
     <div className="p-8">
