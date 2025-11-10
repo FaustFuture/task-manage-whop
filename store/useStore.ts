@@ -13,6 +13,7 @@ interface StoreState {
   lists: List[];
   cards: Card[];
   subtasks: Subtask[];
+  companyUsers: User[];
 
   // Admin Analytics
   analytics: Analytics | null;
@@ -24,6 +25,7 @@ interface StoreState {
   isLoadingLists: boolean;
   isLoadingCards: boolean;
   isLoadingSubtasks: boolean;
+  isLoadingUsers: boolean;
 
   // UI State
   selectedBoardId: string | null;
@@ -36,7 +38,8 @@ interface StoreState {
   setCompanyId: (companyId: string) => void;
 
   // Board actions
-  addBoard: (title: string) => Promise<void>;
+  addBoard: (title: string, assignedTo?: string | null) => Promise<void>;
+  updateBoard: (id: string, updates: Partial<{ title: string; members: string[] }>) => Promise<void>;
   deleteBoard: (id: string) => Promise<void>;
   setSelectedBoard: (id: string | null) => void;
 
@@ -67,6 +70,7 @@ interface StoreState {
   loadLists: (boardId?: string) => Promise<void>;
   loadCards: (boardId?: string) => Promise<void>;
   loadSubtasks: (cardId?: string) => Promise<void>;
+  loadCompanyUsers: () => Promise<void>;
 }
 
 export const useStore = create<StoreState>()((set) => ({
@@ -78,6 +82,7 @@ export const useStore = create<StoreState>()((set) => ({
   lists: [],
   cards: [],
   subtasks: [],
+  companyUsers: [],
   analytics: null,
   isLoadingAnalytics: false,
   analyticsLastUpdated: null,
@@ -85,6 +90,7 @@ export const useStore = create<StoreState>()((set) => ({
   isLoadingLists: false,
   isLoadingCards: false,
   isLoadingSubtasks: false,
+  isLoadingUsers: false,
   selectedBoardId: null,
   selectedCardId: null,
   isCardModalOpen: false,
@@ -97,11 +103,12 @@ export const useStore = create<StoreState>()((set) => ({
   setCompanyId: (companyId) => set({ companyId }),
 
   // Board actions
-  addBoard: async (title) => {
+  addBoard: async (title, assignedTo) => {
     const state = useStore.getState();
 
     console.log('[DEBUG] addBoard called with:', {
       title,
+      assignedTo,
       companyId: state.companyId,
       currentUser: state.currentUser?.id
     });
@@ -115,11 +122,21 @@ export const useStore = create<StoreState>()((set) => ({
     }
 
     try {
+      // Build members array - include assigned member if provided, otherwise include creator
+      const members: string[] = [];
+      if (assignedTo) {
+        members.push(assignedTo);
+      }
+      // Always include creator as a member
+      if (state.currentUser?.id && !members.includes(state.currentUser.id)) {
+        members.push(state.currentUser.id);
+      }
+
       const boardData = {
         title,
         companyId: state.companyId,
         createdBy: state.currentUser?.id || null,
-        members: state.currentUser?.id ? [state.currentUser.id] : [],
+        members,
       };
 
       console.log('[DEBUG] Creating board with data:', boardData);
@@ -135,6 +152,17 @@ export const useStore = create<StoreState>()((set) => ({
       }
     } catch (error) {
       console.error('Failed to create board:', error);
+    }
+  },
+
+  updateBoard: async (id, updates) => {
+    const result = await api.boards.update(id, updates);
+    if (result.data) {
+      set((state) => ({
+        boards: state.boards.map((b) =>
+          b.id === id ? { ...b, ...result.data } : b
+        ),
+      }));
     }
   },
 
@@ -330,6 +358,27 @@ export const useStore = create<StoreState>()((set) => ({
       }
     } finally {
       set({ isLoadingSubtasks: false });
+    }
+  },
+
+  loadCompanyUsers: async () => {
+    const state = useStore.getState();
+
+    if (!state.companyId) {
+      console.warn('Cannot load company users without companyId');
+      return;
+    }
+
+    set({ isLoadingUsers: true });
+    try {
+      const result = await api.whopUsers.getAll(state.companyId);
+      if (result.data) {
+        set({ companyUsers: result.data });
+      }
+    } catch (error) {
+      console.error('Failed to load company users:', error);
+    } finally {
+      set({ isLoadingUsers: false });
     }
   },
 

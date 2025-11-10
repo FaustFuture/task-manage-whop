@@ -19,13 +19,14 @@ import { Card } from '@/types';
 import { ListSkeleton } from './Skeletons';
 
 export function BoardView() {
-  const { boards, lists, cards, selectedBoardId, setSelectedBoard, addList, moveCard, isLoadingLists, isLoadingCards, viewMode } = useStore();
+  const { boards, lists, cards, selectedBoardId, setSelectedBoard, addList, moveCard, isLoadingLists, isLoadingCards, viewMode, currentUser } = useStore();
   const [isAddingList, setIsAddingList] = useState(false);
   const [newListTitle, setNewListTitle] = useState('');
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   
-  const isReadOnly = viewMode === 'boards';
+  const isAdmin = currentUser?.role === 'admin';
+  const isReadOnly = viewMode === 'boards' && !isAdmin;
 
   const currentBoard = boards.find((b) => b.id === selectedBoardId);
   const boardLists = lists
@@ -145,6 +146,11 @@ export function BoardView() {
             <div className="ml-auto flex items-center gap-2 px-3 py-1.5 bg-zinc-800 text-zinc-400 rounded-lg text-sm">
               <Lock size={14} />
               <span>Read Only</span>
+            </div>
+          )}
+          {isAdmin && viewMode === 'boards' && (
+            <div className="ml-auto flex items-center gap-2 px-3 py-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg text-sm">
+              <span>Admin Edit Mode</span>
             </div>
           )}
         </div>

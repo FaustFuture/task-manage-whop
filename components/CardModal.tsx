@@ -25,9 +25,11 @@ export function CardModal() {
     deleteSubtask,
     viewMode,
     loadSubtasks,
+    currentUser,
   } = useStore();
   
-  const isReadOnly = viewMode === 'boards';
+  const isAdmin = currentUser?.role === 'admin';
+  const isReadOnly = viewMode === 'boards' && !isAdmin;
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');

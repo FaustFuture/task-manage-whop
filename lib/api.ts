@@ -171,4 +171,12 @@ export const api = {
       return res.json();
     },
   },
+
+  // Whop Users
+  whopUsers: {
+    getAll: async (companyId: string) => {
+      const res = await fetch(`/api/whop-users?companyId=${companyId}`);
+      return res.json();
+    },
+  },
 };

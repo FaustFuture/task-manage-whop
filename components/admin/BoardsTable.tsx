@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { Search, ArrowUpDown, ArrowUp, ArrowDown, Folder } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Search, ArrowUpDown, ArrowUp, ArrowDown, Folder, Plus, Edit2, X, Check } from 'lucide-react';
+import { useStore } from '@/store/useStore';
 
 interface BoardMetrics {
   id: string;
@@ -23,14 +24,39 @@ interface BoardsTableProps {
 type SortField = 'title' | 'taskCount' | 'completionRate' | 'membersCount' | 'createdAt';
 type SortDirection = 'asc' | 'desc';
 
-export function BoardsTable({ boards }: BoardsTableProps) {
+export function BoardsTable({ boards: boardMetrics }: BoardsTableProps) {
+  const { 
+    addBoard, 
+    updateBoard, 
+    companyUsers, 
+    loadCompanyUsers, 
+    isLoadingUsers,
+    companyId,
+    currentUser,
+    boards: storeBoards
+  } = useStore();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<SortField>('taskCount');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [isAdding, setIsAdding] = useState(false);
+  const [newBoardTitle, setNewBoardTitle] = useState('');
+  const [newBoardAssignedTo, setNewBoardAssignedTo] = useState<string | null>(null);
+  const [editingBoardId, setEditingBoardId] = useState<string | null>(null);
+  const [editAssignedTo, setEditAssignedTo] = useState<string | null>(null);
+
+  const isAdmin = currentUser?.role === 'admin';
+
+  // Load company users when component mounts
+  useEffect(() => {
+    if (isAdmin && companyId) {
+      loadCompanyUsers();
+    }
+  }, [isAdmin, companyId, loadCompanyUsers]);
 
   // Filter and sort data
   const filteredAndSortedData = useMemo(() => {
-    let filtered = boards.filter(
+    let filtered = boardMetrics.filter(
       (board) =>
         board.title.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -58,7 +84,7 @@ export function BoardsTable({ boards }: BoardsTableProps) {
     });
 
     return filtered;
-  }, [boards, searchTerm, sortField, sortDirection]);
+  }, [boardMetrics, searchTerm, sortField, sortDirection]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -106,14 +132,79 @@ export function BoardsTable({ boards }: BoardsTableProps) {
     }
   };
 
+  const handleAddBoard = async () => {
+    if (newBoardTitle.trim()) {
+      await addBoard(newBoardTitle, newBoardAssignedTo);
+      setNewBoardTitle('');
+      setNewBoardAssignedTo(null);
+      setIsAdding(false);
+    }
+  };
+
+  const handleEditAssignment = (board: BoardMetrics) => {
+    setEditingBoardId(board.id);
+    // Get the actual board from store to check members
+    const actualBoard = storeBoards.find(b => b.id === board.id);
+    if (actualBoard) {
+      // Get the assigned member (first member that's not the creator)
+      const assignedMember = actualBoard.members.find(m => m !== actualBoard.createdBy) || null;
+      setEditAssignedTo(assignedMember);
+    } else {
+      setEditAssignedTo(null);
+    }
+  };
+
+  const handleSaveAssignment = async (boardId: string) => {
+    // Get the actual board from store
+    const actualBoard = storeBoards.find(b => b.id === boardId);
+    if (!actualBoard) return;
+
+    // Build members array - include assigned member and creator
+    const members: string[] = [];
+    if (editAssignedTo) {
+      members.push(editAssignedTo);
+    }
+    // Always include creator
+    if (actualBoard.createdBy && !members.includes(actualBoard.createdBy)) {
+      members.push(actualBoard.createdBy);
+    }
+    
+    await updateBoard(boardId, { members });
+    setEditingBoardId(null);
+    setEditAssignedTo(null);
+  };
+
+  // Helper to get assigned member name
+  const getAssignedMemberName = (board: BoardMetrics) => {
+    const actualBoard = storeBoards.find(b => b.id === board.id);
+    if (!actualBoard) return null;
+    
+    const assignedMemberId = actualBoard.members.find(m => m !== actualBoard.createdBy);
+    if (!assignedMemberId) return null;
+    
+    const member = companyUsers.find(u => u.id === assignedMemberId);
+    return member?.name || member?.username || null;
+  };
+
   return (
     <div className="bg-zinc-800 rounded-lg border border-zinc-700">
       {/* Header */}
       <div className="p-4 border-b border-zinc-700">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-white">Boards Overview</h3>
-          <div className="text-sm text-zinc-400">
-            {filteredAndSortedData.length} of {boards.length} boards
+          <div className="flex items-center gap-3">
+            <div className="text-sm text-zinc-400">
+              {filteredAndSortedData.length} of {boardMetrics.length} boards
+            </div>
+            {isAdmin && (
+              <button
+                onClick={() => setIsAdding(true)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors text-sm font-medium cursor-pointer"
+              >
+                <Plus size={16} />
+                New Board
+              </button>
+            )}
           </div>
         </div>
 
@@ -172,6 +263,9 @@ export function BoardsTable({ boards }: BoardsTableProps) {
                 <div className="flex items-center gap-1">
                   Members <SortIcon field="membersCount" />
                 </div>
+              </th>
+              <th className="px-4 py-3">
+                Assignments
               </th>
               <th
                 className="px-4 py-3 cursor-pointer hover:text-white transition-colors"
@@ -254,6 +348,71 @@ export function BoardsTable({ boards }: BoardsTableProps) {
                     <div className="text-white font-medium">{board.membersCount}</div>
                   </td>
 
+                  {/* Assignments */}
+                  <td className="px-4 py-4">
+                    {editingBoardId === board.id ? (
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={editAssignedTo || ''}
+                          onChange={(e) => setEditAssignedTo(e.target.value || null)}
+                          className="flex-1 bg-zinc-900 text-white px-2 py-1 rounded border border-zinc-700 focus:border-emerald-500 focus:outline-none text-sm"
+                          autoFocus
+                        >
+                          <option value="">No assignment</option>
+                          {companyUsers.map((user) => (
+                            <option key={user.id} value={user.id}>
+                              {user.name || user.username}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => handleSaveAssignment(board.id)}
+                          className="p-1.5 bg-emerald-500 text-white rounded hover:bg-emerald-600 transition-colors cursor-pointer"
+                          title="Save"
+                        >
+                          <Check size={14} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingBoardId(null);
+                            setEditAssignedTo(null);
+                          }}
+                          className="p-1.5 bg-zinc-700 text-white rounded hover:bg-zinc-600 transition-colors cursor-pointer"
+                          title="Cancel"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        {getAssignedMemberName(board) ? (
+                          <>
+                            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded text-xs font-medium">
+                              <span>Assignments</span>
+                            </div>
+                            <span className="text-sm text-zinc-300">{getAssignedMemberName(board)}</span>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-zinc-700/50 text-zinc-400 rounded text-xs font-medium">
+                              <span>Assignments</span>
+                            </div>
+                            <span className="text-sm text-zinc-500 italic">Unassigned</span>
+                          </>
+                        )}
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleEditAssignment(board)}
+                            className="p-1 hover:bg-zinc-700 rounded transition-colors cursor-pointer ml-1"
+                            title="Edit assignment"
+                          >
+                            <Edit2 className="text-zinc-400 hover:text-emerald-400" size={14} />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </td>
+
                   {/* Created Date */}
                   <td className="px-4 py-4">
                     <div className="text-sm text-zinc-400">
@@ -276,6 +435,75 @@ export function BoardsTable({ boards }: BoardsTableProps) {
           </div>
         )}
       </div>
+
+      {/* Add Board Form */}
+      {isAdding && (
+        <div className="p-4 border-t border-zinc-700 bg-zinc-900/50">
+          <div className="flex items-center gap-3 mb-3">
+            <h4 className="text-sm font-semibold text-white">Create New Board</h4>
+            <button
+              onClick={() => {
+                setIsAdding(false);
+                setNewBoardTitle('');
+                setNewBoardAssignedTo(null);
+              }}
+              className="ml-auto p-1 hover:bg-zinc-700 rounded transition-colors cursor-pointer"
+            >
+              <X className="text-zinc-400" size={16} />
+            </button>
+          </div>
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={newBoardTitle}
+              onChange={(e) => setNewBoardTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleAddBoard();
+                if (e.key === 'Escape') {
+                  setIsAdding(false);
+                  setNewBoardTitle('');
+                  setNewBoardAssignedTo(null);
+                }
+              }}
+              placeholder="Board title..."
+              className="flex-1 bg-zinc-800 text-white px-3 py-2 rounded-lg border border-zinc-700 focus:border-emerald-500 focus:outline-none text-sm"
+              autoFocus
+            />
+            <select
+              value={newBoardAssignedTo || ''}
+              onChange={(e) => setNewBoardAssignedTo(e.target.value || null)}
+              className="bg-zinc-800 text-white px-3 py-2 rounded-lg border border-zinc-700 focus:border-emerald-500 focus:outline-none text-sm min-w-[200px]"
+            >
+              <option value="">No assignment</option>
+              {isLoadingUsers ? (
+                <option disabled>Loading users...</option>
+              ) : (
+                companyUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name || user.username}
+                  </option>
+                ))
+              )}
+            </select>
+            <button
+              onClick={handleAddBoard}
+              className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors text-sm font-medium cursor-pointer"
+            >
+              Create
+            </button>
+            <button
+              onClick={() => {
+                setIsAdding(false);
+                setNewBoardTitle('');
+                setNewBoardAssignedTo(null);
+              }}
+              className="px-4 py-2 bg-zinc-700 text-white rounded-lg hover:bg-zinc-600 transition-colors text-sm font-medium cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
