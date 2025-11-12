@@ -256,7 +256,7 @@ export function generateActivityHeatmap(): HeatmapCell[] {
 }
 
 // Board health status
-export type BoardHealth = 'healthy' | 'at_risk' | 'stalled';
+export type BoardHealth = 'on_track' | 'active' | 'needs_attention' | 'not_started';
 
 export interface BoardHealthData {
   boardId: string;
@@ -279,15 +279,18 @@ export function calculateBoardHealth(
   const doneCount = boardCards.filter(c => c.status === 'done').length;
 
   const completionRate = taskCount > 0 ? (doneCount / taskCount) * 100 : 0;
+  const inProgressRate = taskCount > 0 ? (inProgressCount / taskCount) * 100 : 0;
   const notStartedRate = taskCount > 0 ? (notStartedCount / taskCount) * 100 : 0;
 
   let health: BoardHealth;
-  if (completionRate > 50) {
-    health = 'healthy';
-  } else if (notStartedRate > 50) {
-    health = 'stalled';
+  if (completionRate >= 70) {
+    health = 'on_track';
+  } else if (completionRate >= 40 && inProgressRate >= 20) {
+    health = 'active';
+  } else if (notStartedRate >= 60) {
+    health = 'not_started';
   } else {
-    health = 'at_risk';
+    health = 'needs_attention';
   }
 
   return {

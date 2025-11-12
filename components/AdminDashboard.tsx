@@ -4,7 +4,6 @@ import { useEffect, useState, useMemo } from 'react';
 import { useStore } from '@/store/useStore';
 import { OverviewMetrics } from './admin/OverviewMetrics';
 import { UserMetricsTable } from './admin/UserMetricsTable';
-import { BoardsTable } from './admin/BoardsTable';
 import { BoardAnalyticsSection } from './admin/BoardAnalytics';
 import { ActivityFeed } from './admin/ActivityFeed';
 import { TrendChart } from './admin/TrendChart';
@@ -15,7 +14,7 @@ import {
   generateDailyTrend,
   generateCompletionTrend,
 } from '@/lib/mockData';
-import { RefreshCw, Download, Calendar, TrendingUp, Activity as ActivityIcon } from 'lucide-react';
+import { RefreshCw, Download, Calendar, TrendingUp, Activity as ActivityIcon, Info } from 'lucide-react';
 
 export function AdminDashboard() {
   const {
@@ -215,6 +214,46 @@ export function AdminDashboard() {
           <div className="flex items-center gap-2 mb-4">
             <Calendar className="text-indigo-500" size={20} />
             <h3 className="text-xl font-semibold text-white">Board Analytics</h3>
+            <div className="group relative">
+              <Info className="text-zinc-400 hover:text-zinc-300 cursor-help transition-colors" size={18} />
+              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-50">
+                <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 shadow-xl w-80">
+                  <h4 className="text-white font-semibold mb-3 text-sm">Board Classification</h4>
+                  <div className="space-y-2.5 text-xs">
+                    <div className="flex items-start gap-2">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
+                      <div>
+                        <span className="text-emerald-400 font-medium">On Track:</span>
+                        <span className="text-zinc-400 ml-1">≥70% tasks completed</span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
+                      <div>
+                        <span className="text-blue-400 font-medium">Active:</span>
+                        <span className="text-zinc-400 ml-1">40-69% done, ≥20% in progress</span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <div className="w-2 h-2 rounded-full bg-amber-500 mt-1.5 flex-shrink-0" />
+                      <div>
+                        <span className="text-amber-400 font-medium">Needs Attention:</span>
+                        <span className="text-zinc-400 ml-1">Mixed state, may need review</span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <div className="w-2 h-2 rounded-full bg-red-500 mt-1.5 flex-shrink-0" />
+                      <div>
+                        <span className="text-red-400 font-medium">Not Started:</span>
+                        <span className="text-zinc-400 ml-1">≥60% not started</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {/* Arrow */}
+                <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-zinc-700" />
+              </div>
+            </div>
           </div>
           <BoardAnalyticsSection
             boardStats={analytics.boardStats.mostActive}
@@ -226,7 +265,20 @@ export function AdminDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Top Performers */}
           <div className="bg-gradient-to-br from-emerald-900/20 to-zinc-800 rounded-lg border border-emerald-700/30 p-6">
-            <h3 className="text-lg font-semibold text-emerald-400 mb-4">Top Performers</h3>
+            <div className="flex items-center gap-2 mb-4">
+              <h3 className="text-lg font-semibold text-emerald-400">Top Performers</h3>
+              <div className="group relative">
+                <Info className="text-emerald-400/70 hover:text-emerald-400 cursor-help transition-colors" size={16} />
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-50">
+                  <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-3 shadow-xl w-64">
+                    <p className="text-xs text-zinc-300 leading-relaxed">
+                      Users with the highest task completion rates. Ranked by completion percentage for users with at least 3 tasks.
+                    </p>
+                  </div>
+                  <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-zinc-700" />
+                </div>
+              </div>
+            </div>
             {analytics.userMetrics.topPerformers.length > 0 ? (
               <div className="space-y-3">
                 {analytics.userMetrics.topPerformers.map((user, index) => (
@@ -250,7 +302,20 @@ export function AdminDashboard() {
 
           {/* Users Needing Support */}
           <div className="bg-gradient-to-br from-amber-900/20 to-zinc-800 rounded-lg border border-amber-700/30 p-6">
-            <h3 className="text-lg font-semibold text-amber-400 mb-4">Needs Support</h3>
+            <div className="flex items-center gap-2 mb-4">
+              <h3 className="text-lg font-semibold text-amber-400">Needs Support</h3>
+              <div className="group relative">
+                <Info className="text-amber-400/70 hover:text-amber-400 cursor-help transition-colors" size={16} />
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-50">
+                  <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-3 shadow-xl w-64">
+                    <p className="text-xs text-zinc-300 leading-relaxed">
+                      Users with the lowest task completion rates who may need additional support. Ranked by completion percentage for users with at least 3 tasks.
+                    </p>
+                  </div>
+                  <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-zinc-700" />
+                </div>
+              </div>
+            </div>
             {analytics.userMetrics.needingSupport.length > 0 ? (
               <div className="space-y-3">
                 {analytics.userMetrics.needingSupport.map((user, index) => (
@@ -274,7 +339,20 @@ export function AdminDashboard() {
 
           {/* Collaboration Index */}
           <div className="bg-gradient-to-br from-indigo-900/20 to-zinc-800 rounded-lg border border-indigo-700/30 p-6">
-            <h3 className="text-lg font-semibold text-indigo-400 mb-4">Most Collaborative</h3>
+            <div className="flex items-center gap-2 mb-4">
+              <h3 className="text-lg font-semibold text-indigo-400">Most Collaborative</h3>
+              <div className="group relative">
+                <Info className="text-indigo-400/70 hover:text-indigo-400 cursor-help transition-colors" size={16} />
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-50">
+                  <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-3 shadow-xl w-64">
+                    <p className="text-xs text-zinc-300 leading-relaxed">
+                      Users who are members of the most boards, indicating high collaboration and cross-team involvement.
+                    </p>
+                  </div>
+                  <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-zinc-700" />
+                </div>
+              </div>
+            </div>
             {analytics.userMetrics.all.length > 0 ? (
               <div className="space-y-3">
                 {[...analytics.userMetrics.all]
@@ -317,26 +395,12 @@ export function AdminDashboard() {
           </div> */}
         </div>
 
-        {/* Boards Section */}
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <h3 className="text-xl font-semibold text-white">Boards</h3>
-          </div>
-          <BoardsTable
-            boards={analytics.boardStats.all.map((board) => ({
-              ...board,
-              membersCount: boards.find((b) => b.id === board.id)?.members.length || 0,
-              createdAt: boards.find((b) => b.id === board.id)?.createdAt || new Date(),
-            }))}
-          />
-        </div>
-
         {/* Footer Note */}
-        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4 text-center">
+        {/* <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4 text-center">
           <p className="text-sm text-zinc-500">
             <span className="text-zinc-400 font-medium">Note:</span> Activity feed, trends, and extended user data (department, location, join dates) are mock data for demonstration purposes.
           </p>
-        </div>
+        </div> */}
       </div>
 
       {/* User Detail Modal */}

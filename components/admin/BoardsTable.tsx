@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Search, ArrowUpDown, ArrowUp, ArrowDown, Folder, Plus, Edit2, X, Check } from 'lucide-react';
 import { useStore } from '@/store/useStore';
+import { BoardHealth } from '@/types';
 
 interface BoardMetrics {
   id: string;
@@ -12,7 +13,7 @@ interface BoardMetrics {
   inProgress: number;
   done: number;
   completionRate: number;
-  health: 'healthy' | 'at_risk' | 'stalled';
+  health: BoardHealth;
   membersCount: number;
   createdAt: Date;
 }
@@ -108,11 +109,13 @@ export function BoardsTable({ boards: boardMetrics }: BoardsTableProps) {
 
   const getHealthColor = (health: string) => {
     switch (health) {
-      case 'healthy':
+      case 'on_track':
         return 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20';
-      case 'at_risk':
+      case 'active':
+        return 'text-blue-500 bg-blue-500/10 border-blue-500/20';
+      case 'needs_attention':
         return 'text-amber-500 bg-amber-500/10 border-amber-500/20';
-      case 'stalled':
+      case 'not_started':
         return 'text-red-500 bg-red-500/10 border-red-500/20';
       default:
         return 'text-zinc-500 bg-zinc-500/10 border-zinc-500/20';
@@ -121,12 +124,14 @@ export function BoardsTable({ boards: boardMetrics }: BoardsTableProps) {
 
   const getHealthLabel = (health: string) => {
     switch (health) {
-      case 'healthy':
-        return 'Healthy';
-      case 'at_risk':
-        return 'At Risk';
-      case 'stalled':
-        return 'Stalled';
+      case 'on_track':
+        return 'On Track';
+      case 'active':
+        return 'Active';
+      case 'needs_attention':
+        return 'Needs Attention';
+      case 'not_started':
+        return 'Not Started';
       default:
         return 'Unknown';
     }

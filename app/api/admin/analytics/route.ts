@@ -97,16 +97,19 @@ export async function GET(request: NextRequest) {
       const boardDone = boardCards.filter((c) => c.status === 'done').length;
       const boardTotal = boardCards.length;
 
-      let health: 'healthy' | 'at_risk' | 'stalled';
+      let health: 'on_track' | 'active' | 'needs_attention' | 'not_started';
       const doneRate = boardTotal > 0 ? (boardDone / boardTotal) * 100 : 0;
+      const inProgressRate = boardTotal > 0 ? (boardInProgress / boardTotal) * 100 : 0;
       const notStartedRate = boardTotal > 0 ? (boardNotStarted / boardTotal) * 100 : 0;
 
-      if (doneRate > 50) {
-        health = 'healthy';
-      } else if (notStartedRate > 50) {
-        health = 'stalled';
+      if (doneRate >= 70) {
+        health = 'on_track';
+      } else if (doneRate >= 40 && inProgressRate >= 20) {
+        health = 'active';
+      } else if (notStartedRate >= 60) {
+        health = 'not_started';
       } else {
-        health = 'at_risk';
+        health = 'needs_attention';
       }
 
       return {
@@ -189,9 +192,10 @@ export async function GET(request: NextRequest) {
         all: boardStats,
         mostActive: mostActiveBoards,
         healthDistribution: {
-          healthy: boardStats.filter((b) => b.health === 'healthy').length,
-          atRisk: boardStats.filter((b) => b.health === 'at_risk').length,
-          stalled: boardStats.filter((b) => b.health === 'stalled').length,
+          onTrack: boardStats.filter((b) => b.health === 'on_track').length,
+          active: boardStats.filter((b) => b.health === 'active').length,
+          needsAttention: boardStats.filter((b) => b.health === 'needs_attention').length,
+          notStarted: boardStats.filter((b) => b.health === 'not_started').length,
         },
       },
       userMetrics: {

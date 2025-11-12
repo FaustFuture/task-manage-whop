@@ -3,7 +3,7 @@
 import { useStore } from '@/store/useStore';
 import { Card, TaskStatus } from '@/types';
 import { useSortable } from '@dnd-kit/sortable';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 const statusConfig: Record<TaskStatus, { label: string; dotColor: string; bgColor: string; textColor: string; hoverBorder: string; hoverText: string }> = {
   not_started: {
@@ -42,6 +42,8 @@ interface CardItemProps {
 export function CardItem({ card, readOnly = false }: CardItemProps) {
   const { openCardModal, updateCard } = useStore();
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+  const statusButtonRef = useRef<HTMLButtonElement>(null);
 
   const {
     attributes,
@@ -55,6 +57,18 @@ export function CardItem({ card, readOnly = false }: CardItemProps) {
   const handleStatusChange = (newStatus: TaskStatus) => {
     updateCard(card.id, { status: newStatus });
     setShowStatusDropdown(false);
+  };
+
+  const handleStatusButtonClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (statusButtonRef.current) {
+      const rect = statusButtonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.top,
+        left: rect.left + rect.width,
+      });
+    }
+    setShowStatusDropdown(!showStatusDropdown);
   };
 
   return (
@@ -71,10 +85,8 @@ export function CardItem({ card, readOnly = false }: CardItemProps) {
         />
       ) : (
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowStatusDropdown(!showStatusDropdown);
-          }}
+          ref={statusButtonRef}
+          onClick={handleStatusButtonClick}
           className={`absolute left-0 top-0 bottom-0 w-1 ${statusConfig[card.status].dotColor} group-hover:w-5 transition-all duration-200 cursor-pointer z-10 rounded-l-lg`}
           title={statusConfig[card.status].label}
         />
@@ -87,7 +99,13 @@ export function CardItem({ card, readOnly = false }: CardItemProps) {
             className="fixed inset-0 z-20"
             onClick={() => setShowStatusDropdown(false)}
           />
-          <div className="absolute left-7 top-0 w-40 bg-zinc-800 rounded-lg border border-zinc-700 shadow-xl z-30 overflow-hidden">
+          <div 
+            className="fixed w-40 bg-zinc-800 rounded-lg border border-zinc-700 shadow-xl z-30 overflow-hidden"
+            style={{
+              top: `${dropdownPosition.top}px`,
+              left: `${dropdownPosition.left}px`,
+            }}
+          >
             {allStatuses.map((status, index) => (
               <button
                 key={status}

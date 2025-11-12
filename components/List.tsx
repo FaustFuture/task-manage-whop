@@ -2,7 +2,7 @@
 
 import { useStore } from '@/store/useStore';
 import { Plus, MoreVertical, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { List as ListType } from '@/types';
 import { CardItem } from './CardItem';
 import { useDroppable } from '@dnd-kit/core';
@@ -23,10 +23,28 @@ export function BoardList({ list, activeCardId, overCardId, readOnly = false }: 
   const [isAddingCard, setIsAddingCard] = useState(false);
   const [newCardTitle, setNewCardTitle] = useState('');
   const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const { setNodeRef, isOver } = useDroppable({
     id: list.id,
   });
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMenu]);
 
   const listCards = cards
     .filter((c) => c.listId === list.id)
@@ -47,7 +65,7 @@ export function BoardList({ list, activeCardId, overCardId, readOnly = false }: 
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-white">{list.title}</h3>
         {!readOnly && (
-          <div className="relative">
+          <div className="relative" ref={menuRef}>
             <button
               onClick={() => setShowMenu(!showMenu)}
               className="p-1 hover:bg-zinc-700 rounded transition-colors cursor-pointer"

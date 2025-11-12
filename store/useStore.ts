@@ -214,22 +214,59 @@ export const useStore = create<StoreState>()((set) => ({
   addCard: async (listId, title) => {
     const state = useStore.getState();
 
+    // Generate temporary ID for optimistic update
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+    
+    // Get the highest order number for cards in this list to place new card at the end
+    const listCards = state.cards.filter(c => c.listId === listId);
+    const maxOrder = listCards.length > 0 
+      ? Math.max(...listCards.map(c => c.order)) 
+      : -1;
+
+    // Create temporary card for immediate UI update
+    const tempCard: Card = {
+      id: tempId,
+      listId,
+      title,
+      status: 'not_started',
+      assignedTo: [],
+      createdBy: state.currentUser?.id || null,
+      createdAt: new Date(),
+      order: maxOrder + 1,
+    };
+
+    // Optimistic update - add card immediately to local state
+    set((state) => ({
+      cards: [...state.cards, tempCard],
+    }));
+
+    // Make API call in background
     try {
       const result = await api.cards.create({
         listId,
         title,
         createdBy: state.currentUser?.id || null,
+        order: maxOrder + 1,
       });
 
       if (result.data) {
+        // Replace temporary card with real card from API
         set((state) => ({
-          cards: [...state.cards, result.data],
+          cards: state.cards.map(c => c.id === tempId ? result.data : c),
         }));
       } else if (result.error) {
         console.error('Error creating card:', result.error);
+        // Rollback: remove temporary card on error
+        set((state) => ({
+          cards: state.cards.filter(c => c.id !== tempId),
+        }));
       }
     } catch (error) {
       console.error('Failed to create card:', error);
+      // Rollback: remove temporary card on error
+      set((state) => ({
+        cards: state.cards.filter(c => c.id !== tempId),
+      }));
     }
   },
 

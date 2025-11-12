@@ -1,53 +1,64 @@
 import { BoardAnalytics, BoardHealth } from '@/types';
-import { Folder, TrendingUp, AlertTriangle, PauseCircle } from 'lucide-react';
+import { Folder, TrendingUp, AlertTriangle, PauseCircle, PlayCircle } from 'lucide-react';
 
 interface BoardAnalyticsProps {
   boardStats: BoardAnalytics[];
   healthDistribution: {
-    healthy: number;
-    atRisk: number;
-    stalled: number;
+    onTrack: number;
+    active: number;
+    needsAttention: number;
+    notStarted: number;
   };
 }
 
 const healthConfig: Record<BoardHealth, { label: string; color: string; bgColor: string; icon: typeof TrendingUp }> = {
-  healthy: { label: 'Healthy', color: 'text-emerald-500', bgColor: 'bg-emerald-500/10', icon: TrendingUp },
-  at_risk: { label: 'At Risk', color: 'text-amber-500', bgColor: 'bg-amber-500/10', icon: AlertTriangle },
-  stalled: { label: 'Stalled', color: 'text-red-500', bgColor: 'bg-red-500/10', icon: PauseCircle },
+  on_track: { label: 'On Track', color: 'text-emerald-500', bgColor: 'bg-emerald-500/10', icon: TrendingUp },
+  active: { label: 'Active', color: 'text-blue-500', bgColor: 'bg-blue-500/10', icon: PlayCircle },
+  needs_attention: { label: 'Needs Attention', color: 'text-amber-500', bgColor: 'bg-amber-500/10', icon: AlertTriangle },
+  not_started: { label: 'Not Started', color: 'text-red-500', bgColor: 'bg-red-500/10', icon: PauseCircle },
 };
 
 export function BoardAnalyticsSection({ boardStats, healthDistribution }: BoardAnalyticsProps) {
-  const topBoards = [...boardStats].sort((a, b) => b.taskCount - a.taskCount).slice(0, 5);
+  const topBoards = [...boardStats].sort((a, b) => b.taskCount - a.taskCount).slice(0, 3);
 
   return (
     <div className="space-y-6">
       {/* Health Distribution */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-gradient-to-br from-emerald-900/20 to-zinc-800 rounded-lg p-6 border border-emerald-700/30">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-emerald-400 text-sm font-medium">Healthy Boards</h3>
+            <h3 className="text-emerald-400 text-sm font-medium">On Track</h3>
             <TrendingUp className="text-emerald-500" size={20} />
           </div>
-          <p className="text-3xl font-bold text-white">{healthDistribution.healthy}</p>
-          <p className="text-xs text-zinc-500 mt-1">&gt;50% tasks completed</p>
+          <p className="text-3xl font-bold text-white">{healthDistribution.onTrack}</p>
+          <p className="text-xs text-zinc-500 mt-1">≥70% tasks completed</p>
+        </div>
+
+        <div className="bg-gradient-to-br from-blue-900/20 to-zinc-800 rounded-lg p-6 border border-blue-700/30">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-blue-400 text-sm font-medium">Active</h3>
+            <PlayCircle className="text-blue-500" size={20} />
+          </div>
+          <p className="text-3xl font-bold text-white">{healthDistribution.active}</p>
+          <p className="text-xs text-zinc-500 mt-1">40-69% done, work in progress</p>
         </div>
 
         <div className="bg-gradient-to-br from-amber-900/20 to-zinc-800 rounded-lg p-6 border border-amber-700/30">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-amber-400 text-sm font-medium">At Risk</h3>
+            <h3 className="text-amber-400 text-sm font-medium">Needs Attention</h3>
             <AlertTriangle className="text-amber-500" size={20} />
           </div>
-          <p className="text-3xl font-bold text-white">{healthDistribution.atRisk}</p>
-          <p className="text-xs text-zinc-500 mt-1">Needs attention</p>
+          <p className="text-3xl font-bold text-white">{healthDistribution.needsAttention}</p>
+          <p className="text-xs text-zinc-500 mt-1">May need review</p>
         </div>
 
         <div className="bg-gradient-to-br from-red-900/20 to-zinc-800 rounded-lg p-6 border border-red-700/30">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-red-400 text-sm font-medium">Stalled</h3>
+            <h3 className="text-red-400 text-sm font-medium">Not Started</h3>
             <PauseCircle className="text-red-500" size={20} />
           </div>
-          <p className="text-3xl font-bold text-white">{healthDistribution.stalled}</p>
-          <p className="text-xs text-zinc-500 mt-1">&gt;50% not started</p>
+          <p className="text-3xl font-bold text-white">{healthDistribution.notStarted}</p>
+          <p className="text-xs text-zinc-500 mt-1">≥60% not started</p>
         </div>
       </div>
 
@@ -63,64 +74,21 @@ export function BoardAnalyticsSection({ boardStats, healthDistribution }: BoardA
 
             return (
               <div key={board.id} className="p-4 hover:bg-zinc-900/50 transition-colors">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center">
-                      <Folder className="text-white" size={20} />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Folder className="text-white" size={16} />
                     </div>
-                    <div>
-                      <h4 className="text-white font-medium">{board.title}</h4>
-                      <p className="text-sm text-zinc-500">{board.taskCount} tasks</p>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-white font-medium truncate">{board.title}</h4>
+                      <p className="text-xs text-zinc-500">{board.taskCount} tasks • {board.completionRate}% complete</p>
                     </div>
                   </div>
-                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${healthInfo.bgColor}`}>
-                    <Icon size={16} className={healthInfo.color} />
-                    <span className={`text-sm font-medium ${healthInfo.color}`}>
+                  <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${healthInfo.bgColor} flex-shrink-0 ml-3`}>
+                    <Icon size={14} className={healthInfo.color} />
+                    <span className={`text-xs font-medium ${healthInfo.color}`}>
                       {healthInfo.label}
                     </span>
-                  </div>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs text-zinc-400">
-                    <span>Completion: {board.completionRate}%</span>
-                    <span>
-                      {board.done}/{board.taskCount} done
-                    </span>
-                  </div>
-                  <div className="h-2 bg-zinc-900 rounded-full overflow-hidden">
-                    <div className="h-full flex">
-                      {/* Done */}
-                      <div
-                        className="bg-emerald-500"
-                        style={{ width: `${(board.done / board.taskCount) * 100}%` }}
-                      />
-                      {/* In Progress */}
-                      <div
-                        className="bg-blue-500"
-                        style={{ width: `${(board.inProgress / board.taskCount) * 100}%` }}
-                      />
-                      {/* Not Started */}
-                      <div
-                        className="bg-zinc-700"
-                        style={{ width: `${(board.notStarted / board.taskCount) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex gap-4 text-xs">
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 bg-emerald-500 rounded-full" />
-                      <span className="text-zinc-400">{board.done} done</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                      <span className="text-zinc-400">{board.inProgress} in progress</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 bg-zinc-700 rounded-full" />
-                      <span className="text-zinc-400">{board.notStarted} not started</span>
-                    </div>
                   </div>
                 </div>
               </div>

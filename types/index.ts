@@ -56,7 +56,7 @@ export interface Subtask {
 export type ViewMode = "admin" | "member" | "boards";
 
 // Admin Analytics Types
-export type BoardHealth = 'healthy' | 'at_risk' | 'stalled';
+export type BoardHealth = 'on_track' | 'active' | 'needs_attention' | 'not_started';
 
 export interface BoardAnalytics {
   id: string;
@@ -100,9 +100,10 @@ export interface Analytics {
     all: BoardAnalytics[];
     mostActive: BoardAnalytics[];
     healthDistribution: {
-      healthy: number;
-      atRisk: number;
-      stalled: number;
+      onTrack: number;
+      active: number;
+      needsAttention: number;
+      notStarted: number;
     };
   };
   userMetrics: {
